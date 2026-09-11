@@ -1,285 +1,174 @@
-// STEP 5 — MONO BG + OLD-STYLE DRAGGABLE POPUPS + COMPOSE/PLAY/REC
-const BASE_W = 1080;
-const BASE_H = 1350;
-const PANEL_W = 360;
-const SEQUENCE_MS = 6500;
+// STEP 6 — TRASH SCALE / DRAG LABELS / OLD POPUPS
+const BASE_W=1080, BASE_H=1350, PANEL_W=360, SEQUENCE_MS=6500;
 
-const COLORS = {
-  black:'#090909',
-  cream:'#FFF1CE',
-  pink:'#FF78C8',
-  blue:'#75B8FF',
-  white:'#FFFFFF',
-  chrome:'#F5F5F7',
-  chromeBar:'#ECECEF'
-};
+const COLORS={black:'#090909',pink:'#FF78C8',white:'#FFFFFF',chrome:'#F5F5F7',chromeBar:'#ECECEF',blue:'#75B8FF'};
+const BG_PALETTE=['#8D8D8A','#F1E9FF','#91C792','#FFF1CE','#CFE8FF','#FFD7EA','#0B0B0F'];
 
-const BG_PALETTE = [
-  '#8D8D8A', // grey
-  '#F1E9FF', // lilac
-  '#91C792', // day green
-  '#FFF1CE', // cream
-  '#CFE8FF', // sky
-  '#FFD7EA', // pink
-  '#0B0B0F'  // black
-];
-
-const state = {
-  bgColor: BG_PALETTE[0],
-  title:'EX CASA DEL CUSTODE',
-  year:'2026 / 2027',
-  info:'GIARDINO DELLA MONTAGNOLA',
-  footer:'@excasadelcustode',
+const state={
+  bgColor:BG_PALETTE[1], showGrid:true, gridAlpha:28,
+  title:'EX CASA DEL CUSTODE', year:'2026 / 2027', info:'GIARDINO DELLA MONTAGNOLA', footer:'@excasadelcustode',
+  scales:{house:1.55,popup:1,label:1,rat:1.05},
   popups:[
-    {date:'12.03.2026', title:'EVENTO 01', body:'Titolo / descrizione evento'},
-    {date:'18.05.2026', title:'EVENTO 02', body:'Titolo / descrizione evento'},
-    {date:'27.09.2026', title:'EVENTO 03', body:'Titolo / descrizione evento'}
+    {date:'12.03.2026',title:'EVENTO 01',body:'Titolo / descrizione evento'},
+    {date:'18.05.2026',title:'EVENTO 02',body:'Titolo / descrizione evento'},
+    {date:'27.09.2026',title:'EVENTO 03',body:'Titolo / descrizione evento'}
   ],
-  popupPositions:[
-    {x:690,y:150},
-    {x:710,y:440},
-    {x:700,y:790}
+  popupPositions:[{x:610,y:125},{x:720,y:430},{x:675,y:785}],
+  places:[
+    {name:'EX CASA DEL CUSTODE',x:75,y:620,w:220},
+    {name:'PINCIO',x:505,y:75,w:120},
+    {name:'FONTANA',x:485,y:655,w:130},
+    {name:'VIA IRNERIO',x:175,y:1215,w:160},
+    {name:'FILLA',x:720,y:900,w:110}
   ],
-  logos:[null,null,null],
-  logoLabels:['ASAP','CUSTODIA','BOLOGNA']
+  logos:[null,null,null],logoLabels:['ASAP','CUSTODIA','BOLOGNA']
 };
 
-const sequence = {
-  mode:'compose', // compose | play | rec | final
-  startedAt:0,
-  elapsed:0,
-  recorder:null,
-  chunks:[]
-};
+const sequence={mode:'compose',startedAt:0,elapsed:0,recorder:null,chunks:[]};
+let statusEl,dragType=null,dragIndex=-1,dragOffX=0,dragOffY=0;
+let view={s:1,ox:0,oy:0,artViewportW:0};
 
-let statusEl;
-let draggingPopup = -1;
-let dragOffX = 0;
-let dragOffY = 0;
-let view = {s:1, ox:0, oy:0, artViewportW:0};
+const ratPath=[{x:250,y:1210},{x:250,y:1040},{x:390,y:1040},{x:390,y:790},{x:250,y:790},{x:250,y:630},{x:205,y:630},{x:205,y:555}];
 
-const ratPath = [
-  {x:250,y:1210}, {x:250,y:1030}, {x:360,y:1030}, {x:360,y:820},
-  {x:175,y:820}, {x:175,y:650}, {x:205,y:650}, {x:205,y:555}
-];
-
-function setup(){
-  createCanvas(windowWidth,windowHeight);
-  pixelDensity(1);
-  noSmooth();
-  textFont('Helvetica, Arial, sans-serif');
-  buildEditor();
-}
+function setup(){createCanvas(windowWidth,windowHeight);pixelDensity(1);noSmooth();buildEditor();}
 
 function draw(){
   background(state.bgColor);
-  if(sequence.mode==='play' || sequence.mode==='rec'){
+  if(sequence.mode==='play'||sequence.mode==='rec'){
     sequence.elapsed=millis()-sequence.startedAt;
-    if(sequence.elapsed>=SEQUENCE_MS) finishSequence();
+    if(sequence.elapsed>=SEQUENCE_MS)finishSequence();
   }
-
-  view.artViewportW=max(320,width-PANEL_W);
-  const margin=18;
-  view.s=min((view.artViewportW-margin*2)/BASE_W,(height-margin*2)/BASE_H);
-  view.ox=max(margin,(view.artViewportW-BASE_W*view.s)/2);
-  view.oy=(height-BASE_H*view.s)/2;
-
-  push();
-  translate(view.ox,view.oy);
-  scale(view.s);
-  drawMap();
-  drawIdentity();
-  if(sequence.mode==='compose' || sequence.mode==='final') drawFinalComposition();
-  else drawAnimatedSequence();
+  view.artViewportW=max(320,width-PANEL_W);const m=18;
+  view.s=min((view.artViewportW-m*2)/BASE_W,(height-m*2)/BASE_H);
+  view.ox=max(m,(view.artViewportW-BASE_W*view.s)/2);view.oy=(height-BASE_H*view.s)/2;
+  push();translate(view.ox,view.oy);scale(view.s);
+  drawBackground();drawMap();drawIdentity();
+  if(sequence.mode==='compose'||sequence.mode==='final')drawFinalComposition();else drawAnimatedSequence();
+  drawPlaceLabels();
   pop();
 }
 
 function buildEditor(){
-  const panel=createDiv(); panel.id('editor-panel');
-  createElement('h1','EX CASA / MAP EDITOR').parent(panel);
-  const sub=createDiv('compose → play → rec'); sub.class('sub'); sub.parent(panel);
+  const panel=createDiv();panel.id('editor-panel');
+  createElement('h1','Ex Casa Map Tool').parent(panel);
+  const sub=createDiv('compose / play / rec / trash scale');sub.class('sub');sub.parent(panel);
 
   const controls=makeSection(panel,'Sequenza');
-  const row=createDiv(); row.class('control-row'); row.parent(controls);
-  makeControlButton(row,'COMPOSE',setCompose);
-  makeControlButton(row,'▶ PLAY',()=>startSequence(false));
-  makeControlButton(row,'● REC',()=>startSequence(true));
-  statusEl=createDiv('COMPOSE MODE'); statusEl.class('rec-status'); statusEl.parent(controls);
+  const row=createDiv();row.class('control-row');row.parent(controls);
+  makeControlButton(row,'COMPOSE',setCompose);makeControlButton(row,'▶ PLAY',()=>startSequence(false));makeControlButton(row,'● REC',()=>startSequence(true));
+  statusEl=createDiv('COMPOSE MODE');statusEl.class('rec-status');statusEl.parent(controls);
 
   const bg=makeSection(panel,'Background');
-  const palette=createDiv(); palette.class('palette'); palette.parent(bg);
-  BG_PALETTE.forEach(c=>{
-    const sw=createButton(''); sw.class('swatch'); sw.parent(palette);
-    sw.style('background',c); sw.attribute('title',c);
-    sw.mousePressed(()=>state.bgColor=c);
-  });
+  const pal=createDiv();pal.class('palette');pal.parent(bg);
+  BG_PALETTE.forEach(c=>{const sw=createButton('');sw.class('swatch');sw.parent(pal);sw.style('background',c);sw.mousePressed(()=>state.bgColor=c)});
+  const gridWrap=createDiv();gridWrap.class('field');gridWrap.parent(bg);
+  const gridLabel=createElement('label','griglia');gridLabel.parent(gridWrap);
+  const gridCheck=createCheckbox('',state.showGrid);gridCheck.parent(gridWrap);gridCheck.changed(()=>state.showGrid=gridCheck.checked());
 
   const identity=makeSection(panel,'Identità');
-  makeTextField(identity,'Titolo',state.title,v=>state.title=v);
-  makeTextField(identity,'Anno / edizione',state.year,v=>state.year=v);
-  makeTextField(identity,'Info',state.info,v=>state.info=v);
-  makeTextField(identity,'Footer / IG',state.footer,v=>state.footer=v);
+  makeTextField(identity,'Titolo',state.title,v=>state.title=v);makeTextField(identity,'Anno',state.year,v=>state.year=v);makeTextField(identity,'Info',state.info,v=>state.info=v);makeTextField(identity,'Footer',state.footer,v=>state.footer=v);
+
+  const scaleSec=makeSection(panel,'Scale');
+  makeScale(scaleSec,'Casetta','house',0.5,2.6,.05);
+  makeScale(scaleSec,'Popup','popup',0.6,1.8,.05);
+  makeScale(scaleSec,'Etichette','label',0.6,1.8,.05);
+  makeScale(scaleSec,'Topo','rat',0.6,2.2,.05);
 
   for(let i=0;i<3;i++){
-    const section=makeSection(panel,`Popup ${i+1}`);
-    const grid=createDiv(); grid.class('popup-grid'); grid.parent(section);
-    makeTextField(grid,'Data',state.popups[i].date,v=>state.popups[i].date=v);
-    makeTextField(grid,'Titolo',state.popups[i].title,v=>state.popups[i].title=v);
-    makeTextareaField(section,'Testo',state.popups[i].body,v=>state.popups[i].body=v);
-    const coords=createDiv(`x ${round(state.popupPositions[i].x)} · y ${round(state.popupPositions[i].y)}`);
-    coords.id(`coords-${i}`); coords.class('coords'); coords.parent(section);
+    const sec=makeSection(panel,`Popup ${i+1}`);const grid=createDiv();grid.class('popup-grid');grid.parent(sec);
+    makeTextField(grid,'Data',state.popups[i].date,v=>state.popups[i].date=v);makeTextField(grid,'Titolo',state.popups[i].title,v=>state.popups[i].title=v);
+    makeTextareaField(sec,'Testo',state.popups[i].body,v=>state.popups[i].body=v);
+    const c=createDiv('drag sulla composizione');c.class('coords');c.id(`coords-${i}`);c.parent(sec);
   }
+
+  const places=makeSection(panel,'Luoghi');
+  state.places.forEach((p,i)=>{makeTextField(places,`Etichetta ${i+1}`,p.name,v=>p.name=v)});
 
   const logos=makeSection(panel,'Loghi PNG');
-  for(let i=0;i<3;i++){
-    const wrap=createDiv(); wrap.class('field logo-input'); wrap.parent(logos);
-    createElement('label',`Logo ${i+1} · ${state.logoLabels[i]}`).parent(wrap);
-    const input=createFileInput(f=>handleLogo(f,i)); input.parent(wrap); input.attribute('accept','image/png,image/*');
-  }
-
-  const hint=createDiv('COMPOSE: trascina i popup sulla grafica. Le coordinate vengono mantenute e PLAY/REC li farà apparire negli stessi punti.');
-  hint.class('hint'); hint.parent(panel);
+  for(let i=0;i<3;i++){const w=createDiv();w.class('field logo-input');w.parent(logos);createElement('label',`Logo ${i+1}`).parent(w);const inp=createFileInput(f=>handleLogo(f,i));inp.parent(w);inp.attribute('accept','image/png,image/*')}
+  const hint=createDiv('Trash mode: cambia le scale senza paura. Popup ed etichette luogo sono trascinabili in COMPOSE e mantengono la posizione in PLAY/REC.');hint.class('hint');hint.parent(panel);
 }
 
-function makeControlButton(parent,label,fn){const b=createButton(label);b.class('control-button');b.parent(parent);b.mousePressed(fn);}
-function makeSection(parent,title){const s=createDiv();s.class('section');s.parent(parent);const t=createDiv(title);t.class('section-title');t.parent(s);return s;}
-function makeTextField(parent,labelText,value,onChange){const w=createDiv();w.class('field');w.parent(parent);createElement('label',labelText).parent(w);const i=createInput(value);i.parent(w);i.input(()=>onChange(i.value()));return i;}
-function makeTextareaField(parent,labelText,value,onChange){const w=createDiv();w.class('field');w.parent(parent);createElement('label',labelText).parent(w);const t=createElement('textarea',value);t.parent(w);t.input(()=>onChange(t.value()));return t;}
-function handleLogo(file,index){if(!file||file.type!=='image')return;loadImage(file.data,img=>state.logos[index]=img);}
+function makeControlButton(parent,label,fn){const b=createButton(label);b.class('control-button');b.parent(parent);b.mousePressed(fn)}
+function makeSection(parent,title){const s=createDiv();s.class('section');s.parent(parent);const t=createDiv(title);t.class('section-title');t.parent(s);return s}
+function makeTextField(parent,labelText,value,onChange){const w=createDiv();w.class('field');w.parent(parent);createElement('label',labelText).parent(w);const i=createInput(value);i.parent(w);i.input(()=>onChange(i.value()));return i}
+function makeTextareaField(parent,labelText,value,onChange){const w=createDiv();w.class('field');w.parent(parent);createElement('label',labelText).parent(w);const t=createElement('textarea',value);t.parent(w);t.input(()=>onChange(t.value()));return t}
+function makeScale(parent,label,key,minV,maxV,step){const row=createDiv();row.class('scale-row');row.parent(parent);createElement('label',label).parent(row);const r=createSlider(minV,maxV,state.scales[key],step);r.parent(row);const v=createDiv(state.scales[key].toFixed(2)+'×');v.class('scale-value');v.parent(row);r.input(()=>{state.scales[key]=r.value();v.html(Number(r.value()).toFixed(2)+'×')})}
+function handleLogo(file,index){if(!file||file.type!=='image')return;loadImage(file.data,img=>state.logos[index]=img)}
 
-function setCompose(){
-  stopRecording(false);
-  sequence.mode='compose'; sequence.elapsed=0; setStatus('COMPOSE MODE');
-}
-function startSequence(recording){
-  if(sequence.mode==='play'||sequence.mode==='rec')return;
-  sequence.mode=recording?'rec':'play'; sequence.startedAt=millis(); sequence.elapsed=0;
-  setStatus(recording?'● RECORDING':'PLAYING'); if(recording)startRecording();
-}
-function finishSequence(){
-  const wasRec=sequence.mode==='rec'; sequence.mode='final'; sequence.elapsed=SEQUENCE_MS; setStatus('FINAL FRAME'); if(wasRec)stopRecording(true);
-}
-function setStatus(t){if(statusEl)statusEl.html(t);}
+function setCompose(){stopRecording(false);sequence.mode='compose';sequence.elapsed=0;setStatus('COMPOSE MODE')}
+function startSequence(rec){if(sequence.mode==='play'||sequence.mode==='rec')return;sequence.mode=rec?'rec':'play';sequence.startedAt=millis();sequence.elapsed=0;setStatus(rec?'● RECORDING':'PLAYING');if(rec)startRecording()}
+function finishSequence(){const wasRec=sequence.mode==='rec';sequence.mode='final';sequence.elapsed=SEQUENCE_MS;setStatus('FINAL FRAME');if(wasRec)stopRecording(true)}
+function setStatus(t){if(statusEl)statusEl.html(t)}
 
-function startRecording(){
-  try{
-    const stream=canvas.captureStream(60);
-    const mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm';
-    sequence.chunks=[]; sequence.recorder=new MediaRecorder(stream,{mimeType:mime});
-    sequence.recorder.ondataavailable=e=>{if(e.data&&e.data.size)sequence.chunks.push(e.data)};
-    sequence.recorder.onstop=saveRecording; sequence.recorder.start();
-  }catch(err){console.warn(err);setStatus('REC NON DISPONIBILE');}
+function startRecording(){try{const stream=canvas.captureStream(60);const mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm';sequence.chunks=[];sequence.recorder=new MediaRecorder(stream,{mimeType:mime});sequence.recorder.ondataavailable=e=>{if(e.data&&e.data.size)sequence.chunks.push(e.data)};sequence.recorder.onstop=saveRecording;sequence.recorder.start()}catch(e){console.warn(e);setStatus('REC ERROR')}}
+function stopRecording(save=true){if(sequence.recorder&&sequence.recorder.state!=='inactive'){if(!save)sequence.recorder.onstop=null;sequence.recorder.stop()}}
+function saveRecording(){if(!sequence.chunks.length)return;const b=new Blob(sequence.chunks,{type:'video/webm'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=`ex-casa-${Date.now()}.webm`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
+
+function drawBackground(){
+  noStroke();fill(state.bgColor);rect(0,0,BASE_W,BASE_H);
+  if(state.showGrid){stroke(0,state.gridAlpha);strokeWeight(1);for(let x=0;x<=BASE_W;x+=24)line(x,0,x,BASE_H);for(let y=0;y<=BASE_H;y+=24)line(0,y,BASE_W,y)}
 }
-function stopRecording(save=true){if(sequence.recorder&&sequence.recorder.state!=='inactive'){if(!save)sequence.recorder.onstop=null;sequence.recorder.stop();}}
-function saveRecording(){if(!sequence.chunks.length)return;const blob=new Blob(sequence.chunks,{type:'video/webm'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`ex-casa-${Date.now()}.webm`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);}
 
 function drawMap(){
-  // one flat colour only
-  noStroke(); fill(state.bgColor); rect(0,0,BASE_W,BASE_H);
-
-  // soft, rough Pac-Man-like tunnels
-  stroke(COLORS.black); strokeWeight(76); strokeCap(ROUND); strokeJoin(ROUND); noFill();
-  drawPath([[70,310],[365,310],[365,120]]);
-  drawPath([[365,310],[700,310],[700,120]]);
-  drawPath([[700,310],[1010,310]]);
-  drawPath([[145,310],[145,690],[335,690],[335,1000]]);
-  drawPath([[335,690],[550,690],[550,940]]);
-  drawPath([[550,690],[895,690],[895,360]]);
-  drawPath([[895,690],[895,995],[690,995]]);
-  drawPath([[335,1000],[145,1000],[145,1250],[550,1250]]);
-  drawPath([[550,940],[550,1250],[900,1250],[900,995]]);
-
+  // thinner rough route network
+  stroke(COLORS.black);strokeWeight(46);strokeCap(ROUND);strokeJoin(ROUND);noFill();
+  drawPath([[70,310],[365,310],[365,120]]);drawPath([[365,310],[700,310],[700,120]]);drawPath([[700,310],[1010,310]]);
+  drawPath([[145,310],[145,690],[335,690],[335,1000]]);drawPath([[335,690],[550,690]]);drawPath([[895,690],[895,360]]);drawPath([[895,690],[895,995],[690,995]]);
+  drawPath([[335,1000],[145,1000],[145,1250],[550,1250]]);drawPath([[550,940],[550,1250],[900,1250],[900,995]]);
+  // oval track around fountain
+  ellipse(550,690,300,190);
   noStroke();
-  drawHouse(205,555,1.05);
-  drawFountain(550,690);
-  drawFilla(755,845);
-  drawEntrance(550,130,'PINCIO');
-  drawEntrance(250,1215,'VIA IRNERIO');
+  drawHouseEmoji(205,555,state.scales.house);
+  drawFountainMarker(550,690);
 }
-function drawPath(points){beginShape();for(const p of points)vertex(p[0],p[1]);endShape();}
+function drawPath(points){beginShape();for(const p of points)vertex(p[0],p[1]);endShape()}
 
 function drawIdentity(){
   const ink=isDark(state.bgColor)?COLORS.white:COLORS.black;
-  fill(ink);noStroke();textAlign(LEFT,TOP);textStyle(BOLD);textSize(30);text(state.title||'',55,28);
-  textStyle(NORMAL);textSize(18);text(state.year||'',58,68);textSize(13);text(state.info||'',58,95);
-  textAlign(LEFT,BOTTOM);textSize(12);text(state.footer||'',55,BASE_H-26);
+  fill(ink);noStroke();textAlign(LEFT,TOP);textFont('Times New Roman');textStyle(NORMAL);textSize(34);text(state.title||'',55,28);
+  textSize(25);text(state.year||'',57,69);
+  textFont('Helvetica');textSize(12);text(state.info||'',58,108);
+  textAlign(LEFT,BOTTOM);text(state.footer||'',55,BASE_H-26);
 }
-function isDark(hex){const c=color(hex);return (red(c)+green(c)+blue(c))/3<100;}
+function isDark(hex){const c=color(hex);return(red(c)+green(c)+blue(c))/3<100}
 
-function drawFinalComposition(){for(let i=0;i<3;i++)drawPopupCard(i,1);drawLogos(1);}
+function drawFinalComposition(){for(let i=0;i<3;i++)drawPopupCard(i,1);drawLogos(1)}
 function drawAnimatedSequence(){
-  const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1);
-  const ratEnd=.38,p1=.46,p2=.59,p3=.72,logos=.84;
-  const pos=pointOnPolyline(ratPath,easeInOutCubic(constrain(t/ratEnd,0,1))); drawRat(pos.x,pos.y);
-  if(t>=ratEnd&&t<p1){const s=1.05+sin(frameCount*.45)*.14;drawHouse(205,555,s);}
-  if(t>=p1)drawPopupCard(0,popupEase(t,p1));
-  if(t>=p2)drawPopupCard(1,popupEase(t,p2));
-  if(t>=p3)drawPopupCard(2,popupEase(t,p3));
-  if(t>=logos)drawLogos(constrain((t-logos)/.08,0,1));
+  const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1),ratEnd=.38,p1=.46,p2=.59,p3=.72,logos=.84;
+  const pos=pointOnPolyline(ratPath,easeInOutCubic(constrain(t/ratEnd,0,1)));drawRat(pos.x,pos.y);
+  if(t>=ratEnd&&t<p1)drawHouseEmoji(205,555,state.scales.house*(1+sin(frameCount*.45)*.12));
+  if(t>=p1)drawPopupCard(0,popupEase(t,p1));if(t>=p2)drawPopupCard(1,popupEase(t,p2));if(t>=p3)drawPopupCard(2,popupEase(t,p3));if(t>=logos)drawLogos(constrain((t-logos)/.08,0,1));
 }
-function popupEase(t,start){return easeOutBack(constrain((t-start)/.08,0,1));}
-function pointOnPolyline(points,tt){let total=0,lens=[];for(let i=0;i<points.length-1;i++){const l=dist(points[i].x,points[i].y,points[i+1].x,points[i+1].y);lens.push(l);total+=l;}let target=tt*total;for(let i=0;i<lens.length;i++){if(target<=lens[i]){const q=target/lens[i];return{x:lerp(points[i].x,points[i+1].x,q),y:lerp(points[i].y,points[i+1].y,q)}}target-=lens[i];}return points[points.length-1];}
-function easeInOutCubic(x){return x<.5?4*x*x*x:1-pow(-2*x+2,3)/2;}
-function easeOutBack(x){const c1=1.70158,c3=c1+1;return 1+c3*pow(x-1,3)+c1*pow(x-1,2);}
-function drawRat(x,y){textAlign(CENTER,CENTER);textSize(58);noStroke();text('🐁',x,y);}
+function popupEase(t,s){return easeOutBack(constrain((t-s)/.08,0,1))}
+function pointOnPolyline(points,tt){let total=0,l=[];for(let i=0;i<points.length-1;i++){const d=dist(points[i].x,points[i].y,points[i+1].x,points[i+1].y);l.push(d);total+=d}let target=tt*total;for(let i=0;i<l.length;i++){if(target<=l[i]){const q=target/l[i];return{x:lerp(points[i].x,points[i+1].x,q),y:lerp(points[i].y,points[i+1].y,q)}}target-=l[i]}return points[points.length-1]}
+function easeInOutCubic(x){return x<.5?4*x*x*x:1-pow(-2*x+2,3)/2}
+function easeOutBack(x){const c1=1.70158,c3=c1+1;return 1+c3*pow(x-1,3)+c1*pow(x-1,2)}
+function drawRat(x,y){textAlign(CENTER,CENTER);textSize(58*state.scales.rat);noStroke();text('🐁',x,y)}
 
-function popupSize(i){
-  const d=state.popups[i];
-  const bodyLen=(d.body||'').length;
-  return {w:300,h:bodyLen>90?210:180};
-}
-
-function drawPopupCard(i,scaleAmt){
-  const d=state.popups[i],p=state.popupPositions[i],sz=popupSize(i),w=sz.w,h=sz.h;
-  push();translate(p.x+w/2,p.y+h/2);scale(scaleAmt);translate(-w/2,-h/2);
-
-  // OLD TOOL STYLE
-  noStroke();fill(COLORS.chrome);rect(0,0,w,h,16);
-  stroke(0,35);strokeWeight(1);noFill();rect(0,0,w,h,16);
-  noStroke();fill(COLORS.chromeBar);rect(0,0,w,34,16,16,0,0);
-  fill(0,105);circle(18,17,10);circle(34,17,10);circle(50,17,10);
-
-  const pad=16;
-  fill(COLORS.black);textAlign(LEFT,TOP);textStyle(NORMAL);textSize(12);text(d.date||'',pad,48);
-  textStyle(BOLD);textSize(22);text(d.title||'',pad,70,w-pad*2,42);
-  textStyle(NORMAL);textSize(16);text(d.body||'',pad,116,w-pad*2,h-128);
-  pop();
+function popupSize(i){const len=(state.popups[i].body||'').length;return{w:300,h:len>90?210:180}}
+function drawPopupCard(i,a){
+  const d=state.popups[i],p=state.popupPositions[i],sz=popupSize(i),w=sz.w,h=sz.h,S=state.scales.popup*a;
+  push();translate(p.x+w/2,p.y+h/2);scale(S);translate(-w/2,-h/2);
+  noStroke();fill(COLORS.chrome);rect(0,0,w,h,15);stroke(0,45);strokeWeight(1);noFill();rect(0,0,w,h,15);
+  noStroke();fill(COLORS.chromeBar);rect(0,0,w,32,15,15,0,0);fill(0,100);circle(17,16,9);circle(31,16,9);circle(45,16,9);
+  fill(COLORS.black);textAlign(LEFT,TOP);textFont('Times New Roman');textSize(17);text(d.date||'',15,46);textSize(28);text(d.title||'',15,70,w-30,45);textFont('Helvetica');textSize(14);text(d.body||'',15,120,w-30,h-130);pop();
 }
 
-function drawLogos(a){
-  const xs=[820,910,1000],y=1240,d=68;
-  for(let i=0;i<3;i++){
-    push();translate(xs[i],y);scale(a);fill(COLORS.white);stroke(0,40);strokeWeight(1);circle(0,0,d);
-    const img=state.logos[i];
-    if(img){const m=d*.68,s=min(m/img.width,m/img.height);imageMode(CENTER);image(img,0,0,img.width*s,img.height*s);imageMode(CORNER);}
-    else{noStroke();fill(COLORS.black);textAlign(CENTER,CENTER);textStyle(BOLD);textSize(10);text(state.logoLabels[i],0,0);textStyle(NORMAL);}
-    pop();
-  }
+function drawPlaceLabels(){
+  for(let i=0;i<state.places.length;i++){const p=state.places[i],S=state.scales.label;push();translate(p.x,p.y);scale(S);fill(COLORS.white);stroke(COLORS.black);strokeWeight(1.5);rect(0,0,p.w,34,17);noStroke();fill(COLORS.black);textAlign(CENTER,CENTER);textFont('Helvetica');textStyle(NORMAL);textSize(13);text(p.name,p.w/2,17);pop()}
 }
 
-function drawHouse(x,y,s=1){push();translate(x,y);scale(s);rectMode(CENTER);noStroke();fill(COLORS.white);rect(0,14,82,70,8);fill(COLORS.pink);triangle(-50,-18,0,-62,50,-18);fill(COLORS.black);rect(-22,8,15,20);rect(22,8,15,20);rect(0,32,18,34);fill(COLORS.pink);textAlign(CENTER,CENTER);textSize(30);text('♥',0,6);rectMode(CORNER);pop();}
-function drawFountain(x,y){push();translate(x,y);rectMode(CENTER);noStroke();fill(COLORS.blue);rect(0,0,112,112,18);fill(COLORS.white);textAlign(CENTER,CENTER);textSize(40);text('♒',0,-2);rectMode(CORNER);pop();}
-function drawFilla(x,y){push();translate(x,y);rectMode(CENTER);noStroke();fill(COLORS.white);rect(0,0,70,54,10);fill(COLORS.black);textAlign(CENTER,CENTER);textSize(14);text('FILLA',0,0);rectMode(CORNER);pop();}
-function drawEntrance(x,y,label){push();translate(x,y);rectMode(CENTER);noStroke();fill(COLORS.white);rect(0,0,label==='PINCIO'?140:190,54,9);fill(COLORS.black);textAlign(CENTER,CENTER);textStyle(BOLD);textSize(16);text(label,0,0);textStyle(NORMAL);rectMode(CORNER);pop();}
+function drawHouseEmoji(x,y,s){push();translate(x,y);scale(s);textAlign(CENTER,CENTER);textSize(82);text('🏠',0,0);textSize(38);text('♥',0,12);pop()}
+function drawFountainMarker(x,y){push();translate(x,y);fill(state.bgColor);stroke(COLORS.black);strokeWeight(2);ellipse(0,0,90,58);noStroke();textAlign(CENTER,CENTER);textSize(38);text('⛲',0,-2);pop()}
 
-function screenToBase(mx,my){return{x:(mx-view.ox)/view.s,y:(my-view.oy)/view.s};}
-function hitPopup(bx,by){
-  for(let i=2;i>=0;i--){const p=state.popupPositions[i],sz=popupSize(i);if(bx>=p.x&&bx<=p.x+sz.w&&by>=p.y&&by<=p.y+sz.h)return i;}
-  return -1;
+function drawLogos(a){const xs=[820,910,1000],y=1240,d=66;for(let i=0;i<3;i++){push();translate(xs[i],y);scale(a);fill(COLORS.white);stroke(0);circle(0,0,d);const img=state.logos[i];if(img){const m=d*.68,s=min(m/img.width,m/img.height);imageMode(CENTER);image(img,0,0,img.width*s,img.height*s);imageMode(CORNER)}else{noStroke();fill(COLORS.black);textAlign(CENTER,CENTER);textFont('Helvetica');textSize(10);text(state.logoLabels[i],0,0)}pop()}}
+
+function screenToWorld(mx,my){return{x:(mx-view.ox)/view.s,y:(my-view.oy)/view.s}}
+function mousePressed(){if(sequence.mode!=='compose'||mouseX>=view.artViewportW)return;const m=screenToWorld(mouseX,mouseY);
+  for(let i=state.popupPositions.length-1;i>=0;i--){const p=state.popupPositions[i],sz=popupSize(i),w=sz.w*state.scales.popup,h=sz.h*state.scales.popup;if(m.x>=p.x&&m.x<=p.x+w&&m.y>=p.y&&m.y<=p.y+h){dragType='popup';dragIndex=i;dragOffX=m.x-p.x;dragOffY=m.y-p.y;return}}
+  for(let i=state.places.length-1;i>=0;i--){const p=state.places[i],w=p.w*state.scales.label,h=34*state.scales.label;if(m.x>=p.x&&m.x<=p.x+w&&m.y>=p.y&&m.y<=p.y+h){dragType='place';dragIndex=i;dragOffX=m.x-p.x;dragOffY=m.y-p.y;return}}
 }
-function mousePressed(){
-  if(sequence.mode!=='compose'&&sequence.mode!=='final')return;
-  if(mouseX>=view.artViewportW)return;
-  const b=screenToBase(mouseX,mouseY); const hit=hitPopup(b.x,b.y);
-  if(hit!==-1){draggingPopup=hit;dragOffX=b.x-state.popupPositions[hit].x;dragOffY=b.y-state.popupPositions[hit].y;}
-}
-function mouseDragged(){
-  if(draggingPopup===-1)return;
-  const b=screenToBase(mouseX,mouseY),sz=popupSize(draggingPopup);
-  const p=state.popupPositions[draggingPopup];
-  p.x=constrain(b.x-dragOffX,10,BASE_W-sz.w-10);
-  p.y=constrain(b.y-dragOffY,10,BASE_H-sz.h-10);
-  const c=document.getElementById(`coords-${draggingPopup}`);if(c)c.textContent=`x ${round(p.x)} · y ${round(p.y)}`;
-}
-function mouseReleased(){draggingPopup=-1;}
-function windowResized(){resizeCanvas(windowWidth,windowHeight);}
+function mouseDragged(){if(sequence.mode!=='compose'||dragIndex<0)return;const m=screenToWorld(mouseX,mouseY);if(dragType==='popup'){const p=state.popupPositions[dragIndex];p.x=constrain(m.x-dragOffX,0,BASE_W-180);p.y=constrain(m.y-dragOffY,0,BASE_H-120);const c=select(`#coords-${dragIndex}`);if(c)c.html(`x ${round(p.x)} · y ${round(p.y)}`)}else if(dragType==='place'){const p=state.places[dragIndex];p.x=constrain(m.x-dragOffX,0,BASE_W-p.w);p.y=constrain(m.y-dragOffY,0,BASE_H-40)}}
+function mouseReleased(){dragType=null;dragIndex=-1}
+function windowResized(){resizeCanvas(windowWidth,windowHeight)}
