@@ -1,9 +1,11 @@
-// STEP 2 — STATIC MAP + LIVE CONTENT EDITOR
-// Map stays simple. Right column edits title/info, 3 popup contents and 3 PNG logos.
+// STEP 3 — MAP + LIVE EDITOR + PLAY / REC SEQUENCE
+// PLAY records the artwork canvas while one rat travels from Via Irnerio to the house.
+// On arrival, 3 popup cards appear one after another and remain visible in the final frame.
 
 const BASE_W = 1080;
 const BASE_H = 1350;
 const PANEL_W = 360;
+const SEQUENCE_MS = 7000;
 
 const COLORS = {
   grey: '#7B7B7B',
@@ -30,6 +32,37 @@ const state = {
   logoLabels: ['ASAP', 'CUSTODIA', 'BOLOGNA']
 };
 
+const sequence = {
+  playing: false,
+  startedAt: 0,
+  elapsed: 0,
+  recorder: null,
+  chunks: [],
+  status: 'READY'
+};
+
+let playButton;
+let statusEl;
+
+// Rat starts at Via Irnerio and follows only black corridors to the house.
+// Points are in BASE_W × BASE_H map coordinates.
+const ratPath = [
+  { x: 250, y: 1210 },
+  { x: 250, y: 960 },
+  { x: 330, y: 960 },
+  { x: 330, y: 705 },
+  { x: 145, y: 705 },
+  { x: 145, y: 640 },
+  { x: 205, y: 640 },
+  { x: 205, y: 555 }
+];
+
+const popupPositions = [
+  { x: 735, y: 160 },
+  { x: 745, y: 400 },
+  { x: 745, y: 805 }
+];
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
   pixelDensity(1);
@@ -40,6 +73,11 @@ function setup() {
 
 function draw() {
   background(COLORS.grey);
+
+  if (sequence.playing) {
+    sequence.elapsed = millis() - sequence.startedAt;
+    if (sequence.elapsed >= SEQUENCE_MS) finishSequence();
+  }
 
   const artViewportW = max(320, width - PANEL_W);
   const margin = 18;
@@ -58,6 +96,7 @@ function draw() {
   scale(scaleFactor);
   drawMap();
   drawContentPreview();
+  drawSequence();
   pop();
 }
 
@@ -70,6 +109,16 @@ function buildEditor() {
   const sub = createDiv('contenuti live · mappa fissa');
   sub.class('sub');
   sub.parent(panel);
+
+  const controls = makeSection(panel, 'Sequenza');
+  playButton = createButton('▶ PLAY + REC');
+  playButton.class('play-button');
+  playButton.parent(controls);
+  playButton.mousePressed(startSequence);
+
+  statusEl = createDiv('READY');
+  statusEl.class('rec-status');
+  statusEl.parent(controls);
 
   const identity = makeSection(panel, 'Identità');
   makeTextField(identity, 'Titolo', state.title, v => state.title = v);
@@ -102,7 +151,7 @@ function buildEditor() {
     input.attribute('accept', 'image/png,image/*');
   }
 
-  const hint = createDiv('I popup sono solo in preview: nello step successivo aggiungiamo posizionamento automatico + drag + anti-sovrapposizione.');
+  const hint = createDiv('PLAY registra automaticamente il canvas. Il topo arriva alla casetta, poi entrano i 3 popup e restano nel frame finale.');
   hint.class('hint');
   hint.parent(panel);
 }
@@ -148,6 +197,73 @@ function makeTextareaField(parent, labelText, value, onChange) {
 function handleLogo(file, index) {
   if (!file || file.type !== 'image') return;
   loadImage(file.data, img => state.logos[index] = img);
+}
+
+function startSequence() {
+  if (sequence.playing) return;
+
+  sequence.playing = true;
+  sequence.startedAt = millis();
+  sequence.elapsed = 0;
+  sequence.status = 'REC';
+  updateSequenceUI();
+
+  startRecording();
+}
+
+function finishSequence() {
+  if (!sequence.playing) return;
+  sequence.playing = false;
+  sequence.elapsed = SEQUENCE_MS;
+  sequence.status = 'FINAL FRAME';
+  updateSequenceUI();
+  stopRecording();
+}
+
+function updateSequenceUI() {
+  if (playButton) playButton.html(sequence.playing ? '● RECORDING...' : '▶ PLAY + REC');
+  if (statusEl) statusEl.html(sequence.status);
+}
+
+function startRecording() {
+  try {
+    const stream = canvas.captureStream(60);
+    let mimeType = '';
+    if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) mimeType = 'video/webm;codecs=vp9';
+    else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) mimeType = 'video/webm;codecs=vp8';
+    else mimeType = 'video/webm';
+
+    sequence.chunks = [];
+    sequence.recorder = new MediaRecorder(stream, { mimeType });
+    sequence.recorder.ondataavailable = e => {
+      if (e.data && e.data.size > 0) sequence.chunks.push(e.data);
+    };
+    sequence.recorder.onstop = saveRecording;
+    sequence.recorder.start();
+  } catch (err) {
+    console.warn('Canvas recording not available:', err);
+    sequence.status = 'PLAY ONLY';
+    updateSequenceUI();
+  }
+}
+
+function stopRecording() {
+  if (sequence.recorder && sequence.recorder.state !== 'inactive') {
+    sequence.recorder.stop();
+  }
+}
+
+function saveRecording() {
+  if (!sequence.chunks.length) return;
+  const blob = new Blob(sequence.chunks, { type: 'video/webm' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ex-casa-del-custode-${Date.now()}.webm`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
 function drawMap() {
@@ -196,7 +312,7 @@ function drawMap() {
   rect(455, 515, 180, 250);
 
   noStroke();
-  drawHouse(205, 555, 1.05);
+  drawHouse(205, 555, 1.05, false);
   drawFilla(720, 860);
   drawFountain(545, 640);
   drawEntrance(545, 135, 'PINCIO');
@@ -204,7 +320,6 @@ function drawMap() {
 }
 
 function drawContentPreview() {
-  // identity
   fill(COLORS.white);
   textAlign(LEFT, TOP);
   textStyle(BOLD);
@@ -216,17 +331,112 @@ function drawContentPreview() {
   textSize(13);
   text(state.info || '', 58, 91);
 
-  // 3 popup preview cards, intentionally static for this step.
-  const cardX = 745;
-  const cardYs = [170, 405, 805];
-  for (let i = 0; i < 3; i++) drawPopupPreview(state.popups[i], cardX, cardYs[i], i);
-
-  drawLogoPreview();
+  // Before PLAY, previews are hidden: they appear as part of the sequence.
+  if (!sequence.playing && sequence.elapsed === 0) {
+    drawLogoPreview(false);
+  }
 
   fill(COLORS.white);
   textAlign(LEFT, BOTTOM);
   textSize(12);
   text(state.footer || '', 55, BASE_H - 26);
+}
+
+function drawSequence() {
+  if (!sequence.playing && sequence.elapsed === 0) return;
+
+  const t = constrain(sequence.elapsed / SEQUENCE_MS, 0, 1);
+  const ratEnd = 0.38;
+  const popup1At = 0.44;
+  const popup2At = 0.56;
+  const popup3At = 0.68;
+  const logosAt = 0.80;
+
+  // RAT MOVE
+  const ratT = constrain(t / ratEnd, 0, 1);
+  const pos = pointOnPolyline(ratPath, easeInOutCubic(ratT));
+  drawRat(pos.x, pos.y, ratT);
+
+  // HOUSE PULSE on arrival
+  const housePulse = t >= ratEnd && t < popup1At;
+  if (housePulse) {
+    const s = 1.05 + sin(frameCount * 0.45) * 0.14;
+    drawHouse(205, 555, s, true);
+  }
+
+  // POPUPS accumulate and remain in final frame
+  if (t >= popup1At) drawPopupAnimated(0, popup1At, t);
+  if (t >= popup2At) drawPopupAnimated(1, popup2At, t);
+  if (t >= popup3At) drawPopupAnimated(2, popup3At, t);
+
+  if (t >= logosAt) drawLogoPreview(true, constrain((t - logosAt) / 0.08, 0, 1));
+}
+
+function pointOnPolyline(points, tt) {
+  if (points.length < 2) return points[0];
+
+  const lengths = [];
+  let total = 0;
+  for (let i = 0; i < points.length - 1; i++) {
+    const len = dist(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+    lengths.push(len);
+    total += len;
+  }
+
+  let target = tt * total;
+  for (let i = 0; i < lengths.length; i++) {
+    if (target <= lengths[i]) {
+      const local = lengths[i] === 0 ? 0 : target / lengths[i];
+      return {
+        x: lerp(points[i].x, points[i + 1].x, local),
+        y: lerp(points[i].y, points[i + 1].y, local)
+      };
+    }
+    target -= lengths[i];
+  }
+  return points[points.length - 1];
+}
+
+function easeInOutCubic(x) {
+  return x < 0.5 ? 4 * x * x * x : 1 - pow(-2 * x + 2, 3) / 2;
+}
+
+function drawRat(x, y, progress) {
+  push();
+  translate(x, y);
+  const hop = sin(frameCount * 0.9) * 5;
+  translate(0, hop);
+  textAlign(CENTER, CENTER);
+  textSize(58);
+  noStroke();
+  text('🐁', 0, 0);
+
+  // small pink arcade trail
+  stroke(COLORS.pink);
+  strokeWeight(5);
+  noFill();
+  const tail = 28 + sin(frameCount * 0.35) * 8;
+  line(-28, 10, -28 - tail, 10);
+  pop();
+}
+
+function drawPopupAnimated(index, appearAt, t) {
+  const p = constrain((t - appearAt) / 0.07, 0, 1);
+  const e = easeOutBack(p);
+  const pos = popupPositions[index];
+
+  push();
+  translate(pos.x + 137.5, pos.y + 87.5);
+  scale(e);
+  translate(-(pos.x + 137.5), -(pos.y + 87.5));
+  drawPopupPreview(state.popups[index], pos.x, pos.y, index);
+  pop();
+}
+
+function easeOutBack(x) {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * pow(x - 1, 3) + c1 * pow(x - 1, 2);
 }
 
 function drawPopupPreview(data, x, y, index) {
@@ -260,11 +470,16 @@ function drawPopupPreview(data, x, y, index) {
   text(data.body || '', x + 14, y + 112, w - 28, 50);
 }
 
-function drawLogoPreview() {
+function drawLogoPreview(visible = true, alpha = 1) {
+  if (!visible) return;
+
   const startX = 790;
   const y = 1240;
   const d = 72;
   const gap = 92;
+
+  push();
+  drawingContext.globalAlpha = alpha;
 
   for (let i = 0; i < 3; i++) {
     const x = startX + i * gap;
@@ -296,14 +511,22 @@ function drawLogoPreview() {
       textStyle(NORMAL);
     }
   }
+
+  pop();
 }
 
-function drawHouse(x, y, s = 1) {
+function drawHouse(x, y, s = 1, highlight = false) {
   push();
   translate(x, y);
   scale(s);
   rectMode(CENTER);
   noStroke();
+
+  if (highlight) {
+    fill(COLORS.pink);
+    circle(0, 0, 135);
+  }
+
   fill(COLORS.cream);
   rect(0, 14, 82, 70);
   fill(COLORS.pink);
