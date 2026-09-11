@@ -1,23 +1,30 @@
-// STEP 22 PATCH — dual IG exports + concentric pink waves + ARCI + distributed starts + 2x floating rats + giant mouse finale
+// STEP 23 PATCH — dual IG exports + concentric pink waves + ARCI + distributed starts + 2x floating rats + mouse-to-heart finale
 
 const LOGO_ICON_STORAGE_KEY='ex-casa-logo-icons-v2';
+const FINAL_CAPTION_STORAGE_KEY='ex-casa-final-caption-v1';
 state.logoIcons=['🍒','🍋','🍇'];
 state.arciLogo=null;
+state.finalCaption='2026 edition';
 state._recordTargets=[];
 state._recordRAF=null;
-// Rats are intentionally large/readable by default.
 state.scales.rat=2;
 
 try{
   const saved=JSON.parse(localStorage.getItem(LOGO_ICON_STORAGE_KEY)||'null');
   if(Array.isArray(saved)) state.logoIcons=saved.slice(0,3).map((v,i)=>v||state.logoIcons[i]);
 }catch(e){console.warn('logo icons storage',e)}
+try{
+  const savedCaption=localStorage.getItem(FINAL_CAPTION_STORAGE_KEY);
+  if(savedCaption) state.finalCaption=savedCaption;
+}catch(e){console.warn('final caption storage',e)}
 
 function saveLogoIcons(){
   try{localStorage.setItem(LOGO_ICON_STORAGE_KEY,JSON.stringify(state.logoIcons))}catch(e){console.warn(e)}
 }
+function saveFinalCaption(){
+  try{localStorage.setItem(FINAL_CAPTION_STORAGE_KEY,state.finalCaption)}catch(e){console.warn(e)}
+}
 
-// Extend the logo section safely: custom icon + ARCI logo upload.
 const _buildEditor=buildEditor;
 buildEditor=function(){
   _buildEditor();
@@ -68,15 +75,34 @@ buildEditor=function(){
     });
     arci.append(label,input);
     logoSection.appendChild(arci);
+  }
 
+  if(!logoSection.querySelector('#final-caption-input')){
+    const wrap=document.createElement('div');
+    wrap.className='field';
+    wrap.id='final-caption-input';
+    const label=document.createElement('label');
+    label.textContent='STRINGA FINALE';
+    const input=document.createElement('input');
+    input.type='text';
+    input.value=state.finalCaption;
+    input.placeholder='2026 edition';
+    input.addEventListener('input',()=>{
+      state.finalCaption=input.value||'2026 edition';
+      saveFinalCaption();
+    });
+    wrap.append(label,input);
+    logoSection.appendChild(wrap);
+  }
+
+  if(!logoSection.querySelector('.export-hint')){
     const hint=document.createElement('div');
-    hint.className='coords';
+    hint.className='coords export-hint';
     hint.textContent='REC salva automaticamente POST 4:5 + STORY 9:16.';
     logoSection.appendChild(hint);
   }
 };
 
-// Spread entrances: different edge first, then maximize separation.
 function sideForCellPatched(cell){
   if(cell.c===0)return'left';
   if(cell.c===GRID.cols-1)return'right';
@@ -113,7 +139,6 @@ generateRatStarts=function(){
   }
 };
 
-// ARCI mark independent from partner logos.
 const _drawIdentity=drawIdentity;
 drawIdentity=function(){_drawIdentity();drawArciMark()};
 function drawArciMark(){
@@ -128,7 +153,6 @@ function drawArciMark(){
   pop();
 }
 
-// Floating mouse: 2x default size + soft shadow underneath.
 drawRat=function(x,y,i){
   const S=state.scales.rat;
   push();
@@ -143,7 +167,6 @@ drawRat=function(x,y,i){
   pop();
 };
 
-// Popup typography: event title Helvetica Bold, body Times.
 drawPopupCard=function(i,a){
   const d=state.popups[i];if(!d)return;
   const p=state.popupPositions[i],sz=popupSize(i),w=sz.w,h=sz.h,S=state.scales.popup*a;
@@ -159,7 +182,6 @@ drawPopupCard=function(i,a){
   pop();
 };
 
-// ---------- HOUSE BUTTON CLICK + PINK CONCENTRIC WAVES ----------
 function housePressAmount(){
   if(sequence.mode!=='play'&&sequence.mode!=='rec')return 0;
   const hasHouseRat=state.rats.slice(0,state.ratCount).some(r=>(r?.to??0)===0);
@@ -223,7 +245,6 @@ drawPlaceLabels=function(){
   }
 };
 
-// Partner logos aligned to footer baseline.
 const LOGO_XS=[795,885,975],LOGO_Y=1297;
 drawLogoSlot=function(i,logoAmount,iconScale){
   const d=66,x=LOGO_XS[i],icon=state.logoIcons[i]||['🍒','🍋','🍇'][i];
@@ -240,29 +261,66 @@ drawLogoSlot=function(i,logoAmount,iconScale){
   }
   pop();
 };
-
-// Logo transition: no fruit/icon explosion — only concentric fuchsia waves.
 drawHeartBurst=function(i,q){
   const x=LOGO_XS[i],y=LOGO_Y;
   drawPinkWaves(x,y,constrain(q,0,1),92,3.5);
 };
 
-// Finale: giant mouse, clipped by artboard edges — only a fragment is visible.
+// Finale: fixed center. Mouse shrinks/fades while a heart grows in its place.
 drawStrobeFinal=function(){
   const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1);
   const q=constrain((t-.86)/.14,0,1);
+  const morph=smoothstep01(constrain(q/.72,0,1));
   const flash=floor(sequence.elapsed/95);
   const c=BG_PALETTE[(flash+sequence.strobeOffset)%BG_PALETTE.length];
   noStroke();fill(c);rect(0,0,BASE_W,BASE_H);
   drawIdentity();
-  const size=2200,pad=size*.72;
-  const x=sequence.finalDir===1?lerp(-pad,BASE_W+pad,q):lerp(BASE_W+pad,-pad,q);
-  push();translate(x,sequence.finalY);if(sequence.finalDir<0)scale(-1,1);textAlign(CENTER,CENTER);textSize(size);noStroke();text('🐁',0,0);pop();
-};
 
-// ---------- DUAL RECORDING ----------
-// Post: 1080x1350 (4:5)
-// Story: 1080x1920 (9:16), 4:5 composition centered vertically.
+  const cx=BASE_W/2,cy=BASE_H/2-55;
+  push();
+  translate(cx,cy);
+  textAlign(CENTER,CENTER);
+  noStroke();
+
+  if(morph<1){
+    push();
+    scale(1-morph*.82);
+    textSize(760);
+    drawingContext.globalAlpha=1-morph;
+    text('🐁',0,0);
+    drawingContext.globalAlpha=1;
+    pop();
+  }
+
+  if(morph>0){
+    push();
+    const heartScale=.22+.78*easeOutBack(morph);
+    scale(heartScale);
+    drawingContext.globalAlpha=morph;
+    fill(COLORS.pink);
+    textSize(650);
+    text('♥',0,0);
+    drawingContext.globalAlpha=1;
+    pop();
+  }
+  pop();
+
+  const captionAlpha=constrain((q-.28)/.42,0,1);
+  if(captionAlpha>0){
+    push();
+    drawingContext.globalAlpha=captionAlpha;
+    fill(COLORS.black);
+    textAlign(CENTER,CENTER);
+    textFont('Times New Roman');
+    textStyle(ITALIC);
+    textSize(42);
+    text(state.finalCaption||'2026 edition',BASE_W/2,BASE_H/2+330);
+    drawingContext.globalAlpha=1;
+    pop();
+  }
+};
+function smoothstep01(x){return x*x*(3-2*x)}
+
 function makeRecordTarget(width,height,label){
   const c=document.createElement('canvas');
   c.width=width;c.height=height;c.style.display='none';document.body.appendChild(c);
