@@ -1,4 +1,4 @@
-// STEP 11 — FIXED PAC-MAN GRID + ORTHOGONAL RATS + DYNAMIC POPUPS + STROBE RAT FINALE
+// STEP 12 — INVISIBLE PAC-MAN GRID + GARDEN DOTS + GIANT STROBE RAT
 const BASE_W=1080, BASE_H=1350, PANEL_W=360, SEQUENCE_MS=8200;
 const COLORS={black:'#050505',pink:'#ff61b6',white:'#fff',acid:'#dfff00',blue:'#53b7ff',red:'#ff3b30',cream:'#fff1ce'};
 const BG_PALETTE=['#8D8D8A','#F1E9FF','#91C792','#FFF1CE','#CFE8FF','#FFD7EA','#0B0B0F'];
@@ -33,8 +33,19 @@ const sequence={mode:'compose',startedAt:0,elapsed:0,recorder:null,chunks:[],fin
 let statusEl,placeStatusEl,ratEditorEl,popupEditorEl,popupScaleValueEl,dragType=null,dragIndex=-1,dragOffX=0,dragOffY=0;
 let view={s:1,ox:0,oy:0,artViewportW:0};
 
-// Fixed orthogonal Pac-Man graph. Same map every time.
+// Invisible orthogonal graph: rats still move like Pac-Man, but the route is not drawn.
 const GRID={cols:12,rows:15,left:70,right:1010,top:165,bottom:1245,edges:new Map()};
+
+// Abstract garden / Montagnola masses: dots sit inside cells, never on the rat graph lines.
+const GARDEN_CELLS=[
+  [1,1],[2,1],[4,1],[7,1],[9,1],
+  [1,3],[3,3],[5,3],[8,3],[10,3],
+  [2,5],[4,5],[7,5],[9,5],
+  [1,7],[3,7],[8,7],[10,7],
+  [2,9],[5,9],[7,9],[9,9],
+  [1,11],[3,11],[6,11],[8,11],[10,11],
+  [2,13],[4,13],[7,13],[9,13]
+];
 
 function setup(){
   createCanvas(windowWidth,windowHeight);pixelDensity(1);noSmooth();
@@ -54,7 +65,7 @@ function draw(){
   if((sequence.mode==='play'||sequence.mode==='rec') && sequence.elapsed/SEQUENCE_MS>=.86){
     drawStrobeFinal();
   }else{
-    drawBackground();drawMaze();drawIdentity();drawPlaceLabels();
+    drawBackground();drawGardenDots();drawIdentity();drawPlaceLabels();
     if(sequence.mode==='compose'||sequence.mode==='final')drawFinalComposition();else drawAnimatedSequence();
   }
   pop();
@@ -98,7 +109,7 @@ function buildEditor(){
   const countSel=createSelect();countSel.parent(countWrap);for(let i=1;i<=5;i++)countSel.option(String(i),String(i));countSel.selected(String(state.ratCount));
   countSel.changed(()=>{state.ratCount=Number(countSel.value());saveRats();refreshRatEditors()});
   ratEditorEl=createDiv();ratEditorEl.class('rat-editors');ratEditorEl.parent(rats);refreshRatEditors();
-  const ratHint=createDiv('I topi si muovono SOLO in orizzontale e verticale sui corridoi della mappa, come Pac-Man.');ratHint.class('coords');ratHint.parent(rats);
+  const ratHint=createDiv('La rete di movimento è invisibile: i topi si muovono solo orizzontale/verticale come Pac-Man. I puntini del giardino stanno dentro le celle e non sono percorribili.');ratHint.class('coords');ratHint.parent(rats);
 
   const popSec=makeSection(panel,'Popup eventi');
   popupEditorEl=createDiv();popupEditorEl.parent(popSec);refreshPopupEditors();
@@ -130,7 +141,7 @@ function saveRats(){localStorage.setItem(RAT_STORAGE_KEY,JSON.stringify({ratCoun
 function loadRats(){try{const raw=localStorage.getItem(RAT_STORAGE_KEY);if(!raw)return;const saved=JSON.parse(raw);if(saved.ratCount)state.ratCount=saved.ratCount;if(Array.isArray(saved.rats))state.rats=saved.rats.map(r=>({...r}))}catch(e){console.warn(e)}}
 
 function setCompose(){stopRecording(false);sequence.mode='compose';sequence.elapsed=0;setStatus('COMPOSE MODE')}
-function startSequence(rec){if(sequence.mode==='play'||sequence.mode==='rec')return;sequence.finalDir=random()<.5?1:-1;sequence.finalY=random(300,1050);sequence.strobeOffset=floor(random(BG_PALETTE.length));sequence.mode=rec?'rec':'play';sequence.startedAt=millis();sequence.elapsed=0;setStatus(rec?'● RECORDING':'PLAYING');if(rec)startRecording()}
+function startSequence(rec){if(sequence.mode==='play'||sequence.mode==='rec')return;sequence.finalDir=random()<.5?1:-1;sequence.finalY=random(330,1020);sequence.strobeOffset=floor(random(BG_PALETTE.length));sequence.mode=rec?'rec':'play';sequence.startedAt=millis();sequence.elapsed=0;setStatus(rec?'● RECORDING':'PLAYING');if(rec)startRecording()}
 function finishSequence(){const wasRec=sequence.mode==='rec';sequence.mode='final';sequence.elapsed=SEQUENCE_MS;setStatus('FINAL FRAME');if(wasRec)stopRecording(true)}
 function setStatus(t){if(statusEl)statusEl.html(t)}
 function startRecording(){try{const stream=canvas.captureStream(60),mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm';sequence.chunks=[];sequence.recorder=new MediaRecorder(stream,{mimeType:mime});sequence.recorder.ondataavailable=e=>{if(e.data&&e.data.size)sequence.chunks.push(e.data)};sequence.recorder.onstop=saveRecording;sequence.recorder.start()}catch(e){setStatus('REC ERROR')}}
@@ -150,17 +161,25 @@ function buildFixedGrid(){
   const verticalCols=[0,2,4,5,6,7,9,11];
   for(const r of horizontalRows){for(let c=0;c<GRID.cols-1;c++){if((r===4&&c===5)||(r===10&&c===6))continue;addEdge(nodeIndex(c,r),nodeIndex(c+1,r))}}
   for(const c of verticalCols){for(let r=0;r<GRID.rows-1;r++){if((c===5&&r===5)||(c===6&&r===8))continue;addEdge(nodeIndex(c,r),nodeIndex(c,r+1))}}
-  // extra short orthogonal branches to make the fixed map more maze-like
   const extras=[[[1,1],[1,2]],[[1,1],[2,1]],[[3,3],[4,3]],[[3,3],[3,4]],[[8,1],[9,1]],[[8,1],[8,2]],[[8,5],[9,5]],[[8,5],[8,6]],[[1,7],[2,7]],[[1,7],[1,8]],[[3,9],[4,9]],[[3,9],[3,10]],[[8,9],[9,9]],[[8,9],[8,10]],[[1,13],[2,13]],[[9,13],[10,13]]];
   extras.forEach(([[c1,r1],[c2,r2]])=>addEdge(nodeIndex(c1,r1),nodeIndex(c2,r2)));
 }
 
-function drawMaze(){
-  const seen=new Set();strokeCap(ROUND);strokeJoin(ROUND);noFill();
-  for(const [a,neighbors] of GRID.edges.entries())for(const b of neighbors){const key=a<b?`${a}-${b}`:`${b}-${a}`;if(seen.has(key))continue;seen.add(key);drawLightCorridor(nodePoint(a),nodePoint(b))}
-  const f=getPlaceCenter(2);noFill();stroke(COLORS.black);strokeWeight(7);ellipse(f.x,f.y,250,150);stroke(state.bgColor);strokeWeight(4.5);ellipse(f.x,f.y,250,150);
+function drawGardenDots(){
+  const sx=(GRID.right-GRID.left)/(GRID.cols-1),sy=(GRID.bottom-GRID.top)/(GRID.rows-1);
+  push();noStroke();
+  GARDEN_CELLS.forEach(([c,r],i)=>{
+    // centers of grid cells: never exactly on a graph line/node
+    const x=GRID.left+(c+.5)*sx;
+    const y=GRID.top+(r+.5)*sy;
+    const d=i%5===0?16:i%3===0?11:7;
+    fill(0,i%4===0?95:62);
+    circle(x,y,d);
+    if(i%6===0){circle(x+17,y-8,5);circle(x-13,y+12,4)}
+  });
+  pop();
 }
-function drawLightCorridor(A,B){stroke(COLORS.black);strokeWeight(7);line(A.x,A.y,B.x,B.y);stroke(state.bgColor);strokeWeight(4.5);line(A.x,A.y,B.x,B.y)}
+
 function nearestNode(pt){let best=0,bd=Infinity;for(let i=0;i<GRID.cols*GRID.rows;i++){if(!GRID.edges.has(i))continue;const p=nodePoint(i),d=dist(pt.x,pt.y,p.x,p.y);if(d<bd){bd=d;best=i}}return best}
 function bfsPath(start,end){if(start===end)return[start];const q=[start],prev=new Map([[start,null]]);while(q.length){const cur=q.shift();for(const n of(GRID.edges.get(cur)||[])){if(prev.has(n))continue;prev.set(n,cur);if(n===end){const path=[end];let k=end;while(prev.get(k)!==null){k=prev.get(k);path.push(k)}return path.reverse()}q.push(n)}}return[start,end]}
 
@@ -202,10 +221,10 @@ function drawHeartBurst(i,q){const xs=[820,910,1000],y=1240,x=xs[i];push();trans
 function drawStrobeFinal(){
   const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1),q=constrain((t-.86)/.14,0,1),flash=floor(sequence.elapsed/95);
   const c=BG_PALETTE[(flash+sequence.strobeOffset)%BG_PALETTE.length];noStroke();fill(c);rect(0,0,BASE_W,BASE_H);
-  // identity stays visible during finale
   drawIdentity();
-  const pad=220,x=sequence.finalDir===1?lerp(-pad,BASE_W+pad,q):lerp(BASE_W+pad,-pad,q);
-  push();translate(x,sequence.finalY);if(sequence.finalDir<0)scale(-1,1);textAlign(CENTER,CENTER);textSize(250);noStroke();text('🐁',0,0);pop();
+  // deliberately absurd scale: mouse is larger than the whole composition language.
+  const pad=520,x=sequence.finalDir===1?lerp(-pad,BASE_W+pad,q):lerp(BASE_W+pad,-pad,q);
+  push();translate(x,sequence.finalY);if(sequence.finalDir<0)scale(-1,1);textAlign(CENTER,CENTER);textSize(620);noStroke();text('🐁',0,0);pop();
 }
 
 function screenToWorld(mx,my){return{x:(mx-view.ox)/view.s,y:(my-view.oy)/view.s}}
