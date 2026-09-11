@@ -1,4 +1,4 @@
-// STEP 24 — final composition hold + dynamic places
+// STEP 25 — final composition hold + dynamic places + arcade movement
 
 const FINAL_HOLD_MS=2500;
 const BUILD_END_MS=SEQUENCE_MS*.86;
@@ -30,15 +30,12 @@ draw=function(){
   scale(view.s);
 
   if(active&&sequence.elapsed>=BUILD_END_MS+FINAL_HOLD_MS){
-    // Remap only the closing scene to the old .86 → 1 time window,
-    // so the existing mouse → heart morph keeps exactly the same timing.
     const actualElapsed=sequence.elapsed;
     const local=constrain((actualElapsed-(BUILD_END_MS+FINAL_HOLD_MS))/FINAL_SCENE_MS,0,1);
     sequence.elapsed=BUILD_END_MS+local*FINAL_SCENE_MS;
     drawStrobeFinal();
     sequence.elapsed=actualElapsed;
   }else if(active&&sequence.elapsed>=BUILD_END_MS){
-    // Static, fully composed post: readable pause before the closing scene.
     drawBackground();
     drawBlockedDots();
     drawIdentity();
@@ -54,9 +51,95 @@ draw=function(){
   }
 
   pop();
-
-  // Finish only after the last closing frame has actually been drawn/recorded.
   if(shouldFinish)finishSequence();
+};
+
+// ---------- ARCADE / PAC-MAN FEEL ----------
+// Rats are fully opaque, with no shadows. Movement is deliberately stepped
+// and linear along the grid instead of eased / floaty.
+drawRat=function(x,y,i){
+  const S=state.scales.rat;
+  push();
+  drawingContext.globalAlpha=1;
+  translate(x,y);
+  if(i%2)scale(-1,1);
+  textAlign(CENTER,CENTER);
+  textSize(48*S);
+  noStroke();
+  fill(0);
+  text('🐁',0,0);
+  drawingContext.globalAlpha=1;
+  pop();
+};
+
+function arcadeProgress(local){
+  // Quantised progress gives the little grid-step rhythm of an arcade sprite.
+  const steps=34;
+  return constrain(floor(local*steps)/steps,0,1);
+}
+
+drawAnimatedSequence=function(){
+  const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1);
+  const ratEnd=.42,popupStart=.47,popupEnd=.73,logos=.77;
+
+  for(let i=0;i<state.ratCount;i++){
+    const delay=i*.045;
+    const local=constrain((t-delay)/(ratEnd-delay),0,1);
+    const route=buildRatRoute(i);
+    const pos=pointOnPolyline(route,arcadeProgress(local));
+    drawRat(pos.x,pos.y,i);
+  }
+
+  const n=max(1,state.popups.length);
+  for(let i=0;i<n;i++){
+    const s=popupStart+(popupEnd-popupStart)*(i/max(1,n-1));
+    if(t>=s)drawPopupCard(i,popupEase(t,s));
+  }
+  drawLogoHeartSequence(t,logos);
+};
+
+// Place icons bounce like simple arcade sprites. The label/button itself stays
+// anchored, except for the existing house press animation.
+drawPlaceLabels=function(){
+  const press=housePressAmount(),wave=houseWaveAmount();
+  const active=sequence.mode==='play'||sequence.mode==='rec';
+  const clock=active?sequence.elapsed:millis();
+
+  for(let i=0;i<state.places.length;i++){
+    const p=state.places[i],S=state.scales.label,labelH=34,isHouse=i===0;
+    const phase=i*.72;
+    const bounce=active ? -abs(sin(clock*.009+phase))*8 : -abs(sin(clock*.004+phase))*3;
+
+    push();
+    translate(p.x,p.y+(isHouse?12*press*S:0));
+    scale(S);
+    if(isHouse){
+      translate(p.w/2,79);
+      scale(1+.05*press,1-.20*press);
+      translate(-p.w/2,-79);
+    }
+
+    push();
+    translate(0,bounce);
+    drawingContext.globalAlpha=1;
+    noStroke();
+    textAlign(CENTER,CENTER);
+    textSize(42);
+    text(p.icon||'',p.w/2,34);
+    drawingContext.globalAlpha=1;
+    pop();
+
+    if(isHouse&&press>.02)fill(lerpColor(color(COLORS.acid),color('#8B5CF6'),constrain(press,0,1)));
+    else fill(i%2===0?COLORS.acid:COLORS.white);
+    stroke(COLORS.black);strokeWeight(2+press*2);rect(0,62,p.w,labelH,5);
+    noStroke();fill(COLORS.black);textFont('Helvetica');textStyle(BOLD);textSize(11);textAlign(CENTER,CENTER);text(p.name,p.w/2,79);
+    pop();
+
+    if(isHouse&&wave>0){
+      const cx=p.x+(p.w*S)/2,cy=p.y+34*S;
+      drawPinkWaves(cx,cy,wave,145*S,4);
+    }
+  }
 };
 
 // -------- DYNAMIC PLACES IN THE EDITOR --------
@@ -93,9 +176,6 @@ buildEditor=function(){
     };
     state.places.push(p);
     insertDynamicPlaceEditor(placesSection,p,i);
-
-    // Persist the existence of the new place immediately. Its later dragged
-    // position is still committed in the usual way with FIX LUOGHI.
     try{localStorage.setItem(PLACE_STORAGE_KEY,JSON.stringify(state.places))}catch(e){console.warn(e)}
     generateRatStarts();
     refreshRatEditors();
