@@ -1,4 +1,4 @@
-// STEP 19 PATCH — dual IG exports + fruit logo bursts + ARCI + distributed starts + manhole finale
+// STEP 20 PATCH — dual IG exports + fruit logo bursts + ARCI + distributed starts + manhole finale + house button click
 
 const LOGO_ICON_STORAGE_KEY='ex-casa-logo-icons-v2';
 state.logoIcons=['🍒','🍋','🍇'];
@@ -127,6 +127,67 @@ function drawArciMark(){
   }
   pop();
 }
+
+// ---------- HOUSE BUTTON CLICK ----------
+// Rats finish their travel at t ~= .42. When at least one rat targets the house
+// (place 0), its label behaves like a physical arcade button: down, squash,
+// colour flash and impact ring, then rebounds before the event popups appear.
+function housePressAmount(){
+  if(sequence.mode!=='play'&&sequence.mode!=='rec')return 0;
+  const hasHouseRat=state.rats.slice(0,state.ratCount).some(r=>(r?.to??0)===0);
+  if(!hasHouseRat)return 0;
+  const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1);
+  const start=.405,end=.475;
+  if(t<start||t>end)return 0;
+  const q=(t-start)/(end-start);
+  if(q<.32)return easeOutBack(q/.32);
+  return 1-constrain((q-.32)/.68,0,1);
+}
+function drawHouseImpact(p,S,press){
+  if(press<=.02)return;
+  const cx=p.x+(p.w*S)/2;
+  const cy=p.y+(79*S)+12*press*S;
+  const burst=1-press;
+  push();
+  noFill();
+  stroke(COLORS.pink);
+  strokeWeight(5);
+  circle(cx,cy,90+burst*170);
+  stroke(COLORS.red);
+  strokeWeight(2);
+  circle(cx,cy,55+burst*105);
+  noStroke();
+  fill(COLORS.black);
+  textAlign(CENTER,CENTER);
+  textFont('Helvetica');
+  textStyle(BOLD);
+  textSize(14+8*press);
+  text('CLICK!',cx,cy-60-20*burst);
+  pop();
+}
+
+// Replace place rendering only to add the click feedback; positions/scales remain unchanged.
+drawPlaceLabels=function(){
+  const press=housePressAmount();
+  for(let i=0;i<state.places.length;i++){
+    const p=state.places[i],S=state.scales.label,labelH=34,isHouse=i===0;
+    if(isHouse)drawHouseImpact(p,S,press);
+    push();
+    translate(p.x,p.y+(isHouse?12*press*S:0));
+    scale(S);
+    if(isHouse){
+      translate(p.w/2,79);
+      scale(1+.05*press,1-.18*press);
+      translate(-p.w/2,-79);
+    }
+    noStroke();textAlign(CENTER,CENTER);textSize(42);text(p.icon||'',p.w/2,34);
+    if(isHouse&&press>.02)fill(lerpColor(color(COLORS.acid),color(COLORS.pink),constrain(press,0,1)));
+    else fill(i%2===0?COLORS.acid:COLORS.white);
+    stroke(COLORS.black);strokeWeight(2+press*2);rect(0,62,p.w,labelH,5);
+    noStroke();fill(COLORS.black);textFont('Helvetica');textStyle(BOLD);textSize(11);textAlign(CENTER,CENTER);text(p.name,p.w/2,79);
+    pop();
+  }
+};
 
 // Partner logos aligned to the footer baseline.
 const LOGO_XS=[795,885,975],LOGO_Y=1297;
