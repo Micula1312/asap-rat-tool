@@ -1,4 +1,4 @@
-// STEP 20 PATCH — dual IG exports + fruit logo bursts + ARCI + distributed starts + manhole finale + house button click
+// STEP 21 PATCH — dual IG exports + fruit logo bursts + ARCI + distributed starts + floating rats + house burst + giant mouse finale
 
 const LOGO_ICON_STORAGE_KEY='ex-casa-logo-icons-v2';
 state.logoIcons=['🍒','🍋','🍇'];
@@ -15,7 +15,7 @@ function saveLogoIcons(){
   try{localStorage.setItem(LOGO_ICON_STORAGE_KEY,JSON.stringify(state.logoIcons))}catch(e){console.warn(e)}
 }
 
-// Extend the existing logo section safely.
+// Extend the logo section safely: custom burst icon + ARCI logo upload.
 const _buildEditor=buildEditor;
 buildEditor=function(){
   _buildEditor();
@@ -74,7 +74,7 @@ buildEditor=function(){
   }
 };
 
-// Spread entrances: use a different edge for each rat first, then maximize separation.
+// Spread entrances: different edge first, then maximize separation.
 function sideForCellPatched(cell){
   if(cell.c===0)return'left';
   if(cell.c===GRID.cols-1)return'right';
@@ -94,8 +94,7 @@ function pickDistributedStart(dest,preferredSide,usedStarts=[]){
     return {...o,score:o.d+sep*1.45};
   }).sort((a,b)=>b.score-a.score);
   const shortlist=pool.slice(0,max(3,floor(pool.length*.15)));
-  const chosen=random(shortlist);
-  const p=chosen.p;
+  const chosen=random(shortlist),p=chosen.p;
   let x=p.x,y=p.y;
   if(chosen.side==='left')x=-GRID_STEP*2;
   else if(chosen.side==='right')x=BASE_W+GRID_STEP*2;
@@ -108,8 +107,7 @@ generateRatStarts=function(){
   const sides=shuffle(['left','right','top','bottom'],true);
   for(let i=0;i<state.ratCount;i++){
     const r=state.rats[i]||{to:0};
-    const dest=getPlaceCenter(r.to);
-    state.ratStarts.push(pickDistributedStart(dest,sides[i%sides.length],state.ratStarts));
+    state.ratStarts.push(pickDistributedStart(getPlaceCenter(r.to),sides[i%sides.length],state.ratStarts));
   }
 };
 
@@ -128,68 +126,104 @@ function drawArciMark(){
   pop();
 }
 
-// ---------- HOUSE BUTTON CLICK ----------
-// Rats finish their travel at t ~= .42. When at least one rat targets the house
-// (place 0), its label behaves like a physical arcade button: down, squash,
-// colour flash and impact ring, then rebounds before the event popups appear.
+// Floating mouse: soft shadow underneath the emoji.
+drawRat=function(x,y,i){
+  const S=state.scales.rat;
+  push();
+  noStroke();
+  fill(0,38);
+  ellipse(x+4*S,y+26*S,48*S,15*S);
+  translate(x,y-5*S);
+  if(i%2)scale(-1,1);
+  textAlign(CENTER,CENTER);
+  textSize(48*S);
+  text('🐁',0,0);
+  pop();
+};
+
+// Popup typography: event title Helvetica Bold, body Times.
+drawPopupCard=function(i,a){
+  const d=state.popups[i];if(!d)return;
+  const p=state.popupPositions[i],sz=popupSize(i),w=sz.w,h=sz.h,S=state.scales.popup*a;
+  push();translate(p.x+w/2,p.y+h/2);scale(S);translate(-w/2,-h/2);
+  noStroke();fill('#F5F5F7');rect(0,0,w,h,15);
+  stroke(0,45);strokeWeight(1);noFill();rect(0,0,w,h,15);
+  noStroke();fill('#ECECEF');rect(0,0,w,32,15,15,0,0);
+  fill(0,100);circle(17,16,9);circle(31,16,9);circle(45,16,9);
+
+  fill(COLORS.black);textAlign(LEFT,TOP);
+  textFont('Helvetica');textStyle(NORMAL);textSize(15);text(d.date||'',15,47);
+  textFont('Helvetica');textStyle(BOLD);textSize(27);text(d.title||'',15,70,w-30,43);
+  textFont('Times New Roman');textStyle(NORMAL);textSize(15);text(d.body||'',15,120,w-30,h-130);
+  pop();
+};
+
+// ---------- HOUSE BUTTON CLICK + HOUSE EXPLOSION ----------
 function housePressAmount(){
   if(sequence.mode!=='play'&&sequence.mode!=='rec')return 0;
   const hasHouseRat=state.rats.slice(0,state.ratCount).some(r=>(r?.to??0)===0);
   if(!hasHouseRat)return 0;
   const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1);
-  const start=.405,end=.475;
+  const start=.405,end=.463;
   if(t<start||t>end)return 0;
   const q=(t-start)/(end-start);
-  if(q<.32)return easeOutBack(q/.32);
-  return 1-constrain((q-.32)/.68,0,1);
+  if(q<.34)return easeOutBack(q/.34);
+  return 1-constrain((q-.34)/.66,0,1);
 }
-function drawHouseImpact(p,S,press){
-  if(press<=.02)return;
-  const cx=p.x+(p.w*S)/2;
-  const cy=p.y+(79*S)+12*press*S;
-  const burst=1-press;
+function houseBurstAmount(){
+  if(sequence.mode!=='play'&&sequence.mode!=='rec')return 0;
+  const hasHouseRat=state.rats.slice(0,state.ratCount).some(r=>(r?.to??0)===0);
+  if(!hasHouseRat)return 0;
+  const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1);
+  return constrain((t-.445)/.055,0,1);
+}
+function drawHouseBurst(p,S,q){
+  if(q<=0||q>=1)return;
+  const cx=p.x+(p.w*S)/2,cy=p.y+34*S;
   push();
-  noFill();
-  stroke(COLORS.pink);
-  strokeWeight(5);
-  circle(cx,cy,90+burst*170);
-  stroke(COLORS.red);
-  strokeWeight(2);
-  circle(cx,cy,55+burst*105);
-  noStroke();
-  fill(COLORS.black);
   textAlign(CENTER,CENTER);
-  textFont('Helvetica');
-  textStyle(BOLD);
-  textSize(14+8*press);
-  text('CLICK!',cx,cy-60-20*burst);
+  noStroke();
+  for(let k=0;k<9;k++){
+    const a=TWO_PI*k/9 + .18;
+    const r=(18+q*105)*S;
+    const x=cx+cos(a)*r,y=cy+sin(a)*r;
+    const size=(32*(1-q)+9)*S;
+    textSize(size);
+    text('🏠',x,y);
+  }
   pop();
 }
 
-// Replace place rendering only to add the click feedback; positions/scales remain unchanged.
 drawPlaceLabels=function(){
-  const press=housePressAmount();
+  const press=housePressAmount(),burst=houseBurstAmount();
   for(let i=0;i<state.places.length;i++){
     const p=state.places[i],S=state.scales.label,labelH=34,isHouse=i===0;
-    if(isHouse)drawHouseImpact(p,S,press);
     push();
     translate(p.x,p.y+(isHouse?12*press*S:0));
     scale(S);
     if(isHouse){
       translate(p.w/2,79);
-      scale(1+.05*press,1-.18*press);
+      scale(1+.05*press,1-.20*press);
       translate(-p.w/2,-79);
     }
-    noStroke();textAlign(CENTER,CENTER);textSize(42);text(p.icon||'',p.w/2,34);
-    if(isHouse&&press>.02)fill(lerpColor(color(COLORS.acid),color(COLORS.pink),constrain(press,0,1)));
+
+    // House icon shrinks away into its burst; other place icons stay unchanged.
+    const iconScale=isHouse?max(0,1-burst*1.25):1;
+    if(iconScale>0){
+      push();translate(p.w/2,34);scale(iconScale);noStroke();textAlign(CENTER,CENTER);textSize(42);text(p.icon||'',0,0);pop();
+    }
+
+    if(isHouse&&press>.02)fill(lerpColor(color(COLORS.acid),color('#8B5CF6'),constrain(press,0,1)));
     else fill(i%2===0?COLORS.acid:COLORS.white);
     stroke(COLORS.black);strokeWeight(2+press*2);rect(0,62,p.w,labelH,5);
     noStroke();fill(COLORS.black);textFont('Helvetica');textStyle(BOLD);textSize(11);textAlign(CENTER,CENTER);text(p.name,p.w/2,79);
     pop();
+
+    if(isHouse)drawHouseBurst(p,S,burst);
   }
 };
 
-// Partner logos aligned to the footer baseline.
+// Partner logos aligned to footer baseline.
 const LOGO_XS=[795,885,975],LOGO_Y=1297;
 drawLogoSlot=function(i,logoAmount,iconScale){
   const d=66,x=LOGO_XS[i],burstIcon=state.logoIcons[i]||['🍒','🍋','🍇'][i];
@@ -214,7 +248,7 @@ drawHeartBurst=function(i,q){
   pop();
 };
 
-// Finale: giant manhole/hole icon, clipped naturally by the artboard edges.
+// Finale: giant mouse, clipped by artboard edges — only a fragment is visible.
 drawStrobeFinal=function(){
   const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1);
   const q=constrain((t-.86)/.14,0,1);
@@ -222,15 +256,14 @@ drawStrobeFinal=function(){
   const c=BG_PALETTE[(flash+sequence.strobeOffset)%BG_PALETTE.length];
   noStroke();fill(c);rect(0,0,BASE_W,BASE_H);
   drawIdentity();
-  const size=1900,pad=size*.68;
+  const size=2200,pad=size*.72;
   const x=sequence.finalDir===1?lerp(-pad,BASE_W+pad,q):lerp(BASE_W+pad,-pad,q);
-  push();translate(x,sequence.finalY);textAlign(CENTER,CENTER);textSize(size);noStroke();text('🕳️',0,0);pop();
+  push();translate(x,sequence.finalY);if(sequence.finalDir<0)scale(-1,1);textAlign(CENTER,CENTER);textSize(size);noStroke();text('🐁',0,0);pop();
 };
 
 // ---------- DUAL RECORDING ----------
 // Post: 1080x1350 (4:5)
-// Story: 1080x1920 (9:16). The 4:5 composition is centered vertically;
-// extra space inherits the current background so no content is cropped.
+// Story: 1080x1920 (9:16), 4:5 composition centered vertically.
 function makeRecordTarget(width,height,label){
   const c=document.createElement('canvas');
   c.width=width;c.height=height;c.style.display='none';document.body.appendChild(c);
@@ -238,20 +271,14 @@ function makeRecordTarget(width,height,label){
 }
 function ensureRecordTargets(){
   if(state._recordTargets&&state._recordTargets.length===2)return state._recordTargets;
-  state._recordTargets=[
-    makeRecordTarget(1080,1350,'post-4x5'),
-    makeRecordTarget(1080,1920,'story-9x16')
-  ];
+  state._recordTargets=[makeRecordTarget(1080,1350,'post-4x5'),makeRecordTarget(1080,1920,'story-9x16')];
   return state._recordTargets;
 }
 function copyArtboardToTargets(){
   const targets=ensureRecordTargets();
-  const srcW=BASE_W*view.s,srcH=BASE_H*view.s;
-  const post=targets[0],story=targets[1];
-
+  const srcW=BASE_W*view.s,srcH=BASE_H*view.s,post=targets[0],story=targets[1];
   post.ctx.fillStyle=state.bgColor;post.ctx.fillRect(0,0,1080,1350);
   post.ctx.drawImage(canvas,view.ox,view.oy,srcW,srcH,0,0,1080,1350);
-
   story.ctx.fillStyle=state.bgColor;story.ctx.fillRect(0,0,1080,1920);
   const storyY=(1920-1350)/2;
   story.ctx.drawImage(canvas,view.ox,view.oy,srcW,srcH,0,storyY,1080,1350);
@@ -278,10 +305,7 @@ startRecording=function(){
       t.recorder=new MediaRecorder(stream,{mimeType:mime});
       t.recorder.ondataavailable=e=>{if(e.data&&e.data.size)t.chunks.push(e.data)};
       t.recorder.onstop=()=>{
-        if(t.chunks.length){
-          const blob=new Blob(t.chunks,{type:'video/webm'});
-          downloadBlob(blob,`ex-casa-${t.label}-${stamp}.webm`);
-        }
+        if(t.chunks.length)downloadBlob(new Blob(t.chunks,{type:'video/webm'}),`ex-casa-${t.label}-${stamp}.webm`);
       };
       t.recorder.start();
     });
