@@ -1,4 +1,4 @@
-// STEP 25 — final composition hold + dynamic places + arcade movement
+// STEP 26 — final hold + dynamic places + fluid rats + soft arrivals + pill labels
 
 const FINAL_HOLD_MS=2500;
 const BUILD_END_MS=SEQUENCE_MS*.86;
@@ -54,9 +54,9 @@ draw=function(){
   if(shouldFinish)finishSequence();
 };
 
-// ---------- ARCADE / PAC-MAN FEEL ----------
-// Rats are fully opaque, with no shadows. Movement is deliberately stepped
-// and linear along the grid instead of eased / floaty.
+// ---------- FLUID RAT MOVEMENT ----------
+// Fully opaque, no shadow. The route still respects the grid, but corners are
+// softened and movement is continuous / quicker rather than quantised.
 drawRat=function(x,y,i){
   const S=state.scales.rat;
   push();
@@ -66,27 +66,67 @@ drawRat=function(x,y,i){
   textAlign(CENTER,CENTER);
   textSize(48*S);
   noStroke();
-  fill(0);
   text('🐁',0,0);
   drawingContext.globalAlpha=1;
   pop();
 };
 
-function arcadeProgress(local){
-  // Quantised progress gives the little grid-step rhythm of an arcade sprite.
-  const steps=34;
-  return constrain(floor(local*steps)/steps,0,1);
+function ratFluidEase(x){
+  x=constrain(x,0,1);
+  // Almost linear: just enough easing to avoid a mechanical start/stop.
+  return x*x*(3-2*x);
 }
+
+function simplifyRoute(points){
+  if(!points||points.length<3)return points||[];
+  const out=[points[0]];
+  for(let i=1;i<points.length-1;i++){
+    const a=out[out.length-1],b=points[i],c=points[i+1];
+    const sameX=abs(a.x-b.x)<.01&&abs(b.x-c.x)<.01;
+    const sameY=abs(a.y-b.y)<.01&&abs(b.y-c.y)<.01;
+    if(!sameX&&!sameY)out.push(b);
+  }
+  out.push(points[points.length-1]);
+  return out;
+}
+
+function roundedRoute(points,radius=18){
+  const pts=simplifyRoute(points);
+  if(!pts||pts.length<3)return pts||[];
+  const out=[pts[0]];
+  for(let i=1;i<pts.length-1;i++){
+    const a=pts[i-1],b=pts[i],c=pts[i+1];
+    const lenA=dist(a.x,a.y,b.x,b.y),lenB=dist(b.x,b.y,c.x,c.y);
+    const cut=min(radius,lenA*.28,lenB*.28);
+    if(cut<1){out.push(b);continue;}
+    const inP={x:lerp(b.x,a.x,cut/lenA),y:lerp(b.y,a.y,cut/lenA)};
+    const outP={x:lerp(b.x,c.x,cut/lenB),y:lerp(b.y,c.y,cut/lenB)};
+    out.push(inP);
+    for(let s=1;s<=4;s++){
+      const q=s/4,iq=1-q;
+      out.push({
+        x:iq*iq*inP.x+2*iq*q*b.x+q*q*outP.x,
+        y:iq*iq*inP.y+2*iq*q*b.y+q*q*outP.y
+      });
+    }
+  }
+  out.push(pts[pts.length-1]);
+  return out;
+}
+
+const RAT_FIRST_FINISH=.335;
+const RAT_FINISH_STAGGER=.018;
 
 drawAnimatedSequence=function(){
   const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1);
-  const ratEnd=.42,popupStart=.47,popupEnd=.73,logos=.77;
+  const popupStart=.43,popupEnd=.69,logos=.73;
 
   for(let i=0;i<state.ratCount;i++){
-    const delay=i*.045;
-    const local=constrain((t-delay)/(ratEnd-delay),0,1);
-    const route=buildRatRoute(i);
-    const pos=pointOnPolyline(route,arcadeProgress(local));
+    const delay=i*.025;
+    const finish=RAT_FIRST_FINISH+i*RAT_FINISH_STAGGER;
+    const local=constrain((t-delay)/(finish-delay),0,1);
+    const route=roundedRoute(buildRatRoute(i),20);
+    const pos=pointOnPolyline(route,ratFluidEase(local));
     drawRat(pos.x,pos.y,i);
   }
 
@@ -98,17 +138,60 @@ drawAnimatedSequence=function(){
   drawLogoHeartSequence(t,logos);
 };
 
-// Place icons bounce like simple arcade sprites. The label/button itself stays
-// anchored, except for the existing house press animation.
+// Keep the house press synced with the faster arrival instead of waiting for
+// the old Pac-Man timing.
+housePressAmount=function(){
+  if(sequence.mode!=='play'&&sequence.mode!=='rec')return 0;
+  const houseRats=state.rats.slice(0,state.ratCount).map((r,i)=>({r,i})).filter(o=>(o.r?.to??0)===0);
+  if(!houseRats.length)return 0;
+  const first=min(...houseRats.map(o=>RAT_FIRST_FINISH+o.i*RAT_FINISH_STAGGER));
+  const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1);
+  const start=first-.008,end=first+.065;
+  if(t<start||t>end)return 0;
+  const q=(t-start)/(end-start);
+  if(q<.38)return easeOutBack(q/.38);
+  return 1-constrain((q-.38)/.62,0,1);
+};
+
+houseWaveAmount=function(){
+  if(sequence.mode!=='play'&&sequence.mode!=='rec')return 0;
+  const houseRats=state.rats.slice(0,state.ratCount).map((r,i)=>({r,i})).filter(o=>(o.r?.to??0)===0);
+  if(!houseRats.length)return 0;
+  const first=min(...houseRats.map(o=>RAT_FIRST_FINISH+o.i*RAT_FINISH_STAGGER));
+  const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1);
+  const start=first+.035,end=first+.13;
+  if(t<start||t>end)return 0;
+  return constrain((t-start)/(end-start),0,1);
+};
+
+function arrivalBounceForPlace(placeIndex){
+  if(sequence.mode!=='play'&&sequence.mode!=='rec')return 0;
+  const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1);
+  let best=0;
+  for(let i=0;i<state.ratCount;i++){
+    const r=state.rats[i];
+    if((r?.to??0)!==placeIndex)continue;
+    const arrival=RAT_FIRST_FINISH+i*RAT_FINISH_STAGGER;
+    const q=(t-arrival)/.09;
+    if(q>=0&&q<=1){
+      // One soft spring: up, settle, done.
+      const envelope=1-q;
+      const bounce=sin(q*PI)*11*envelope;
+      best=max(best,bounce);
+    }
+  }
+  return -best;
+}
+
+// ---------- SOFT PLACE LABELS ----------
+// Icons bounce only on arrival. Labels become compact pills, while their
+// logical width/centre stays unchanged so dragging and rat destinations remain stable.
 drawPlaceLabels=function(){
   const press=housePressAmount(),wave=houseWaveAmount();
-  const active=sequence.mode==='play'||sequence.mode==='rec';
-  const clock=active?sequence.elapsed:millis();
 
   for(let i=0;i<state.places.length;i++){
-    const p=state.places[i],S=state.scales.label,labelH=34,isHouse=i===0;
-    const phase=i*.72;
-    const bounce=active ? -abs(sin(clock*.009+phase))*8 : -abs(sin(clock*.004+phase))*3;
+    const p=state.places[i],S=state.scales.label,labelH=32,isHouse=i===0;
+    const bounce=arrivalBounceForPlace(i);
 
     push();
     translate(p.x,p.y+(isHouse?12*press*S:0));
@@ -126,13 +209,24 @@ drawPlaceLabels=function(){
     textAlign(CENTER,CENTER);
     textSize(42);
     text(p.icon||'',p.w/2,34);
-    drawingContext.globalAlpha=1;
     pop();
+
+    textFont('Helvetica');
+    textStyle(BOLD);
+    textSize(11);
+    const pillW=constrain(textWidth(p.name||'')+24,72,p.w);
+    const pillX=(p.w-pillW)/2;
 
     if(isHouse&&press>.02)fill(lerpColor(color(COLORS.acid),color('#8B5CF6'),constrain(press,0,1)));
     else fill(i%2===0?COLORS.acid:COLORS.white);
-    stroke(COLORS.black);strokeWeight(2+press*2);rect(0,62,p.w,labelH,5);
-    noStroke();fill(COLORS.black);textFont('Helvetica');textStyle(BOLD);textSize(11);textAlign(CENTER,CENTER);text(p.name,p.w/2,79);
+    stroke(COLORS.black);
+    strokeWeight(2+press*2);
+    rect(pillX,63,pillW,labelH,labelH/2);
+
+    noStroke();
+    fill(COLORS.black);
+    textAlign(CENTER,CENTER);
+    text(p.name,p.w/2,79);
     pop();
 
     if(isHouse&&wave>0){
