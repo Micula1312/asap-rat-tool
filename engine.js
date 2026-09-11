@@ -1,5 +1,6 @@
-// STEP 12 — INVISIBLE PAC-MAN GRID + GARDEN DOTS + GIANT STROBE RAT
+// STEP 13 — PAC-MAN CELL GRID + BLOCKED DOTS + 2X PLACES/POPUPS
 const BASE_W=1080, BASE_H=1350, PANEL_W=360, SEQUENCE_MS=8200;
+const GRID_STEP=24;
 const COLORS={black:'#050505',pink:'#ff61b6',white:'#fff',acid:'#dfff00',blue:'#53b7ff',red:'#ff3b30',cream:'#fff1ce'};
 const BG_PALETTE=['#8D8D8A','#F1E9FF','#91C792','#FFF1CE','#CFE8FF','#FFD7EA','#0B0B0F'];
 const PLACE_STORAGE_KEY='ex-casa-map-places-v1';
@@ -17,13 +18,13 @@ const DEFAULT_RATS=[{from:3,to:0},{from:4,to:0},{from:1,to:0},{from:2,to:0},{fro
 const state={
   bgColor:BG_PALETTE[1],showGrid:true,gridAlpha:16,
   title:'EX CASA DEL CUSTODE',year:'2026 / 2027',info:'GIARDINO DELLA MONTAGNOLA',footer:'@excasadelcustode',
-  scales:{popup:1,label:1,rat:1},
+  scales:{popup:2,label:2,rat:1},
   popups:[
     {date:'12.03.2026',title:'EVENTO 01',body:'Titolo / descrizione evento'},
     {date:'18.05.2026',title:'EVENTO 02',body:'Titolo / descrizione evento'},
     {date:'27.09.2026',title:'EVENTO 03',body:'Titolo / descrizione evento'}
   ],
-  popupPositions:[{x:620,y:150},{x:710,y:430},{x:675,y:785}],
+  popupPositions:[{x:520,y:160},{x:620,y:500},{x:500,y:850}],
   places:DEFAULT_PLACES.map(p=>({...p})),
   ratCount:2,rats:DEFAULT_RATS.map(r=>({...r})),
   logos:[null,null,null],logoLabels:['ASAP','CUSTODIA','BOLOGNA']
@@ -33,97 +34,49 @@ const sequence={mode:'compose',startedAt:0,elapsed:0,recorder:null,chunks:[],fin
 let statusEl,placeStatusEl,ratEditorEl,popupEditorEl,popupScaleValueEl,dragType=null,dragIndex=-1,dragOffX=0,dragOffY=0;
 let view={s:1,ox:0,oy:0,artViewportW:0};
 
-// Invisible orthogonal graph: rats still move like Pac-Man, but the route is not drawn.
-const GRID={cols:12,rows:15,left:70,right:1010,top:165,bottom:1245,edges:new Map()};
+// The visible 24px grid IS the movement grid.
+const GRID={cols:Math.floor(BASE_W/GRID_STEP),rows:Math.floor(BASE_H/GRID_STEP),edges:new Map(),blocked:new Set()};
 
-// Abstract garden / Montagnola masses: dots sit inside cells, never on the rat graph lines.
-const GARDEN_CELLS=[
-  [1,1],[2,1],[4,1],[7,1],[9,1],
-  [1,3],[3,3],[5,3],[8,3],[10,3],
-  [2,5],[4,5],[7,5],[9,5],
-  [1,7],[3,7],[8,7],[10,7],
-  [2,9],[5,9],[7,9],[9,9],
-  [1,11],[3,11],[6,11],[8,11],[10,11],
-  [2,13],[4,13],[7,13],[9,13]
+// Pac-Man-like pellets: each one is exactly at the centre of a visible grid square.
+// These cells are real obstacles and cannot be crossed by rats.
+const BLOCKED_CELLS=[
+  [4,8],[5,8],[6,8],[7,8],[8,8], [15,8],[16,8],[17,8],[18,8], [31,8],[32,8],[33,8],[34,8],[35,8],
+  [8,14],[8,15],[8,16],[8,17], [20,14],[21,14],[22,14],[23,14],[24,14], [36,14],[36,15],[36,16],[36,17],
+  [4,24],[5,24],[6,24],[7,24], [14,24],[15,24],[16,24], [28,24],[29,24],[30,24], [38,24],[39,24],[40,24],
+  [11,32],[12,32],[13,32],[14,32],[15,32], [22,32],[23,32],[24,32], [32,32],[33,32],[34,32],[35,32],
+  [5,41],[6,41],[7,41],[8,41], [17,41],[18,41],[19,41],[20,41], [28,41],[29,41],[30,41], [37,41],[38,41],[39,41],
+  [10,49],[11,49],[12,49], [22,49],[23,49],[24,49], [33,49],[34,49],[35,49]
 ];
 
-function setup(){
-  createCanvas(windowWidth,windowHeight);pixelDensity(1);noSmooth();
-  loadFixedPlaces();loadRats();buildFixedGrid();buildEditor();
-}
+function setup(){createCanvas(windowWidth,windowHeight);pixelDensity(1);noSmooth();loadFixedPlaces();loadRats();buildGrid();buildEditor()}
 
 function draw(){
   background(state.bgColor);
-  if(sequence.mode==='play'||sequence.mode==='rec'){
-    sequence.elapsed=millis()-sequence.startedAt;
-    if(sequence.elapsed>=SEQUENCE_MS)finishSequence();
-  }
+  if(sequence.mode==='play'||sequence.mode==='rec'){sequence.elapsed=millis()-sequence.startedAt;if(sequence.elapsed>=SEQUENCE_MS)finishSequence()}
   view.artViewportW=max(320,width-PANEL_W);const m=18;
-  view.s=min((view.artViewportW-m*2)/BASE_W,(height-m*2)/BASE_H);
-  view.ox=max(m,(view.artViewportW-BASE_W*view.s)/2);view.oy=(height-BASE_H*view.s)/2;
+  view.s=min((view.artViewportW-m*2)/BASE_W,(height-m*2)/BASE_H);view.ox=max(m,(view.artViewportW-BASE_W*view.s)/2);view.oy=(height-BASE_H*view.s)/2;
   push();translate(view.ox,view.oy);scale(view.s);
-  if((sequence.mode==='play'||sequence.mode==='rec') && sequence.elapsed/SEQUENCE_MS>=.86){
-    drawStrobeFinal();
-  }else{
-    drawBackground();drawGardenDots();drawIdentity();drawPlaceLabels();
-    if(sequence.mode==='compose'||sequence.mode==='final')drawFinalComposition();else drawAnimatedSequence();
-  }
+  if((sequence.mode==='play'||sequence.mode==='rec')&&sequence.elapsed/SEQUENCE_MS>=.86)drawStrobeFinal();
+  else{drawBackground();drawBlockedDots();drawIdentity();drawPlaceLabels();if(sequence.mode==='compose'||sequence.mode==='final')drawFinalComposition();else drawAnimatedSequence()}
   pop();
 }
 
 function buildEditor(){
-  const panel=createDiv();panel.id('editor-panel');
-  createElement('h1','EX CASA MAP TOOL').parent(panel);
-  const sub=createDiv('PAC-MAN / RATS / POPUPS / HEARTS');sub.class('sub');sub.parent(panel);
-
-  const controls=makeSection(panel,'Sequenza');
-  const row=createDiv();row.class('control-row');row.parent(controls);
-  makeControlButton(row,'COMPOSE',setCompose);makeControlButton(row,'▶ PLAY',()=>startSequence(false));makeControlButton(row,'● REC',()=>startSequence(true));
-  statusEl=createDiv('COMPOSE MODE');statusEl.class('rec-status');statusEl.parent(controls);
-
-  const bg=makeSection(panel,'Background');
-  const pal=createDiv();pal.class('palette');pal.parent(bg);
-  BG_PALETTE.forEach(c=>{const sw=createButton('');sw.class('swatch');sw.parent(pal);sw.style('background',c);sw.mousePressed(()=>state.bgColor=c)});
-  const gw=createDiv();gw.class('field');gw.parent(bg);createElement('label','griglia').parent(gw);
-  const gc=createCheckbox('',state.showGrid);gc.parent(gw);gc.changed(()=>state.showGrid=gc.checked());
-
-  const identity=makeSection(panel,'Identità');
-  makeTextField(identity,'Titolo',state.title,v=>state.title=v);makeTextField(identity,'Anno',state.year,v=>state.year=v);makeTextField(identity,'Info',state.info,v=>state.info=v);makeTextField(identity,'Footer',state.footer,v=>state.footer=v);
-
-  const scales=makeSection(panel,'Scale');
-  const popupScale=createDiv();popupScale.class('popup-scale-control');popupScale.parent(scales);
-  const minus=createButton('−');minus.class('mini-button');minus.parent(popupScale);minus.mousePressed(()=>changePopupScale(-.1));
-  popupScaleValueEl=createDiv(`POPUP ${state.scales.popup.toFixed(1)}×`);popupScaleValueEl.class('scale-value');popupScaleValueEl.parent(popupScale);
-  const plus=createButton('+');plus.class('mini-button');plus.parent(popupScale);plus.mousePressed(()=>changePopupScale(.1));
-  makeScale(scales,'Luoghi','label',.6,1.8,.05);makeScale(scales,'Topi','rat',.6,2.2,.05);
-
-  const places=makeSection(panel,'Luoghi / coordinate');
-  state.places.forEach((p,i)=>makePlaceEditor(places,p,i));
-  const pa=createDiv();pa.class('place-actions');pa.parent(places);
-  const fb=createButton('📌 FIX LUOGHI');fb.class('fix-button');fb.parent(pa);fb.mousePressed(()=>{saveFixedPlaces();refreshRatEditors()});
-  const rb=createButton('RESET');rb.class('fix-button secondary');rb.parent(pa);rb.mousePressed(()=>{resetPlaces();refreshRatEditors()});
-  placeStatusEl=createDiv('sposta i badge sulla mappa → FIX LUOGHI');placeStatusEl.class('coords');placeStatusEl.parent(places);
-
-  const rats=makeSection(panel,'Topi / percorsi');
-  const countWrap=createDiv();countWrap.class('field');countWrap.parent(rats);createElement('label','Numero topi').parent(countWrap);
-  const countSel=createSelect();countSel.parent(countWrap);for(let i=1;i<=5;i++)countSel.option(String(i),String(i));countSel.selected(String(state.ratCount));
-  countSel.changed(()=>{state.ratCount=Number(countSel.value());saveRats();refreshRatEditors()});
-  ratEditorEl=createDiv();ratEditorEl.class('rat-editors');ratEditorEl.parent(rats);refreshRatEditors();
-  const ratHint=createDiv('La rete di movimento è invisibile: i topi si muovono solo orizzontale/verticale come Pac-Man. I puntini del giardino stanno dentro le celle e non sono percorribili.');ratHint.class('coords');ratHint.parent(rats);
-
-  const popSec=makeSection(panel,'Popup eventi');
-  popupEditorEl=createDiv();popupEditorEl.parent(popSec);refreshPopupEditors();
-  const add=createButton('+ AGGIUNGI POPUP');add.class('fix-button');add.parent(popSec);add.mousePressed(addPopup);
-
-  const logos=makeSection(panel,'Loghi PNG / cuori');
-  for(let i=0;i<3;i++){const w=createDiv();w.class('field logo-input');w.parent(logos);createElement('label',`Cuore ${i+1} → Logo ${i+1}`).parent(w);const inp=createFileInput(f=>handleLogo(f,i));inp.parent(w);inp.attribute('accept','image/png,image/*')}
+  const panel=createDiv();panel.id('editor-panel');createElement('h1','EX CASA MAP TOOL').parent(panel);const sub=createDiv('PAC-MAN / RATS / POPUPS / HEARTS');sub.class('sub');sub.parent(panel);
+  const controls=makeSection(panel,'Sequenza');const row=createDiv();row.class('control-row');row.parent(controls);makeControlButton(row,'COMPOSE',setCompose);makeControlButton(row,'▶ PLAY',()=>startSequence(false));makeControlButton(row,'● REC',()=>startSequence(true));statusEl=createDiv('COMPOSE MODE');statusEl.class('rec-status');statusEl.parent(controls);
+  const bg=makeSection(panel,'Background');const pal=createDiv();pal.class('palette');pal.parent(bg);BG_PALETTE.forEach(c=>{const sw=createButton('');sw.class('swatch');sw.parent(pal);sw.style('background',c);sw.mousePressed(()=>state.bgColor=c)});const gw=createDiv();gw.class('field');gw.parent(bg);createElement('label','griglia').parent(gw);const gc=createCheckbox('',state.showGrid);gc.parent(gw);gc.changed(()=>state.showGrid=gc.checked());
+  const identity=makeSection(panel,'Identità');makeTextField(identity,'Titolo',state.title,v=>state.title=v);makeTextField(identity,'Anno',state.year,v=>state.year=v);makeTextField(identity,'Info',state.info,v=>state.info=v);makeTextField(identity,'Footer',state.footer,v=>state.footer=v);
+  const scales=makeSection(panel,'Scale');const popupScale=createDiv();popupScale.class('popup-scale-control');popupScale.parent(scales);const minus=createButton('−');minus.class('mini-button');minus.parent(popupScale);minus.mousePressed(()=>changePopupScale(-.1));popupScaleValueEl=createDiv(`POPUP ${state.scales.popup.toFixed(1)}×`);popupScaleValueEl.class('scale-value');popupScaleValueEl.parent(popupScale);const plus=createButton('+');plus.class('mini-button');plus.parent(popupScale);plus.mousePressed(()=>changePopupScale(.1));makeScale(scales,'Luoghi','label',.6,3,.05);makeScale(scales,'Topi','rat',.6,2.2,.05);
+  const places=makeSection(panel,'Luoghi / coordinate');state.places.forEach((p,i)=>makePlaceEditor(places,p,i));const pa=createDiv();pa.class('place-actions');pa.parent(places);const fb=createButton('📌 FIX LUOGHI');fb.class('fix-button');fb.parent(pa);fb.mousePressed(()=>{saveFixedPlaces();refreshRatEditors()});const rb=createButton('RESET');rb.class('fix-button secondary');rb.parent(pa);rb.mousePressed(()=>{resetPlaces();refreshRatEditors()});placeStatusEl=createDiv('sposta icona + label → FIX LUOGHI');placeStatusEl.class('coords');placeStatusEl.parent(places);
+  const rats=makeSection(panel,'Topi / percorsi');const countWrap=createDiv();countWrap.class('field');countWrap.parent(rats);createElement('label','Numero topi').parent(countWrap);const countSel=createSelect();countSel.parent(countWrap);for(let i=1;i<=5;i++)countSel.option(String(i),String(i));countSel.selected(String(state.ratCount));countSel.changed(()=>{state.ratCount=Number(countSel.value());saveRats();refreshRatEditors()});ratEditorEl=createDiv();ratEditorEl.class('rat-editors');ratEditorEl.parent(rats);refreshRatEditors();const ratHint=createDiv('Ogni pallino occupa il centro di una cella della griglia: quella cella è realmente bloccata e il topo la aggira. Movimento solo H/V.');ratHint.class('coords');ratHint.parent(rats);
+  const popSec=makeSection(panel,'Popup eventi');popupEditorEl=createDiv();popupEditorEl.parent(popSec);refreshPopupEditors();const add=createButton('+ AGGIUNGI POPUP');add.class('fix-button');add.parent(popSec);add.mousePressed(addPopup);
+  const logos=makeSection(panel,'Loghi PNG / cuori');for(let i=0;i<3;i++){const w=createDiv();w.class('field logo-input');w.parent(logos);createElement('label',`Cuore ${i+1} → Logo ${i+1}`).parent(w);const inp=createFileInput(f=>handleLogo(f,i));inp.parent(w);inp.attribute('accept','image/png,image/*')}
 }
 
-function changePopupScale(delta){state.scales.popup=constrain(round((state.scales.popup+delta)*10)/10,.5,2.2);if(popupScaleValueEl)popupScaleValueEl.html(`POPUP ${state.scales.popup.toFixed(1)}×`)}
-function addPopup(){const i=state.popups.length;state.popups.push({date:'00.00.2026',title:`EVENTO ${String(i+1).padStart(2,'0')}`,body:'Nuovo evento'});const col=i%3,row=floor(i/3);state.popupPositions.push({x:90+col*310,y:190+row*230});refreshPopupEditors()}
+function changePopupScale(delta){state.scales.popup=constrain(round((state.scales.popup+delta)*10)/10,.5,3);if(popupScaleValueEl)popupScaleValueEl.html(`POPUP ${state.scales.popup.toFixed(1)}×`)}
+function addPopup(){const i=state.popups.length;state.popups.push({date:'00.00.2026',title:`EVENTO ${String(i+1).padStart(2,'0')}`,body:'Nuovo evento'});const col=i%2,row=floor(i/2);state.popupPositions.push({x:80+col*470,y:180+row*300});refreshPopupEditors()}
 function refreshPopupEditors(){if(!popupEditorEl)return;popupEditorEl.html('');state.popups.forEach((p,i)=>{const sec=createDiv();sec.class('popup-editor-card');sec.parent(popupEditorEl);const title=createDiv(`POPUP ${i+1}`);title.class('rat-title');title.parent(sec);const grid=createDiv();grid.class('popup-grid');grid.parent(sec);makeTextField(grid,'Data',p.date,v=>p.date=v);makeTextField(grid,'Titolo',p.title,v=>p.title=v);makeTextareaField(sec,'Testo',p.body,v=>p.body=v);const meta=createDiv(`x ${round(state.popupPositions[i].x)} · y ${round(state.popupPositions[i].y)}`);meta.class('coords');meta.id(`coords-${i}`);meta.parent(sec);if(state.popups.length>1){const del=createButton('× ELIMINA');del.class('mini-button delete');del.parent(sec);del.mousePressed(()=>removePopup(i))}})}
 function removePopup(i){state.popups.splice(i,1);state.popupPositions.splice(i,1);refreshPopupEditors()}
-
 function makePlaceEditor(parent,p,i){const w=createDiv();w.class('place-editor');w.parent(parent);const g=createDiv();g.class('place-grid');g.parent(w);makeTextField(g,`Luogo ${i+1}`,p.name,v=>p.name=v);makeTextField(g,'Icona',p.icon,v=>p.icon=v);const m=createDiv(`x ${round(p.x)} · y ${round(p.y)}`);m.id(`place-coords-${i}`);m.class('coords');m.parent(w)}
 function refreshRatEditors(){if(!ratEditorEl)return;ratEditorEl.html('');while(state.rats.length<5)state.rats.push({from:3,to:0});for(let i=0;i<state.ratCount;i++){const r=state.rats[i],box=createDiv();box.class('rat-editor');box.parent(ratEditorEl);const title=createDiv(`TOPO ${i+1}`);title.class('rat-title');title.parent(box);const grid=createDiv();grid.class('rat-grid');grid.parent(box);makePlaceSelect(grid,'PARTE DA',r.from,v=>{r.from=v;saveRats()});makePlaceSelect(grid,'ARRIVA A',r.to,v=>{r.to=v;saveRats()})}}
 function makePlaceSelect(parent,label,value,onChange){const w=createDiv();w.class('field');w.parent(parent);createElement('label',label).parent(w);const s=createSelect();s.parent(w);state.places.forEach((p,i)=>s.option(`${p.icon} ${p.name}`,String(i)));s.selected(String(value));s.changed(()=>onChange(Number(s.value())));return s}
@@ -131,7 +84,7 @@ function makeControlButton(p,l,fn){const b=createButton(l);b.class('control-butt
 function makeSection(p,t){const s=createDiv();s.class('section');s.parent(p);const h=createDiv(t);h.class('section-title');h.parent(s);return s}
 function makeTextField(p,l,v,fn){const w=createDiv();w.class('field');w.parent(p);createElement('label',l).parent(w);const i=createInput(v);i.parent(w);i.input(()=>fn(i.value()));return i}
 function makeTextareaField(p,l,v,fn){const w=createDiv();w.class('field');w.parent(p);createElement('label',l).parent(w);const t=createElement('textarea',v);t.parent(w);t.input(()=>fn(t.value()));return t}
-function makeScale(p,l,k,minV,maxV,step){const r=createDiv();r.class('scale-row');r.parent(p);createElement('label',l).parent(r);const s=createSlider(minV,maxV,state.scales[k],step);s.parent(r);const v=createDiv(state.scales[k].toFixed(2)+'×');v.class('scale-value');v.parent(r);s.input(()=>{state.scales[k]=s.value();v.html(Number(s.value()).toFixed(2)+'×')})}
+function makeScale(p,l,k,minV,maxV,step){const r=createDiv();r.class('scale-row');r.parent(p);createElement('label',l).parent(r);const s=createSlider(minV,maxV,state.scales[k],step);s.parent(r);const v=createDiv(state.scales[k].toFixed(2)+'×');v.class('scale-value');v.parent(r);s.input(()=>{state.scales[k]=Number(s.value());v.html(Number(s.value()).toFixed(2)+'×')})}
 function handleLogo(file,i){if(!file||file.type!=='image')return;loadImage(file.data,img=>state.logos[i]=img)}
 
 function saveFixedPlaces(){localStorage.setItem(PLACE_STORAGE_KEY,JSON.stringify(state.places));if(placeStatusEl)placeStatusEl.html('✓ LUOGHI FISSATI — coordinate salvate')}
@@ -148,59 +101,45 @@ function startRecording(){try{const stream=canvas.captureStream(60),mime=MediaRe
 function stopRecording(save=true){if(sequence.recorder&&sequence.recorder.state!=='inactive'){if(!save)sequence.recorder.onstop=null;sequence.recorder.stop()}}
 function saveRecording(){if(!sequence.chunks.length)return;const b=new Blob(sequence.chunks,{type:'video/webm'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=`ex-casa-${Date.now()}.webm`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1500)}
 
-function drawBackground(){noStroke();fill(state.bgColor);rect(0,0,BASE_W,BASE_H);if(state.showGrid){stroke(0,state.gridAlpha);strokeWeight(.7);for(let x=0;x<=BASE_W;x+=24)line(x,0,x,BASE_H);for(let y=0;y<=BASE_H;y+=24)line(0,y,BASE_W,y)}}
+function drawBackground(){noStroke();fill(state.bgColor);rect(0,0,BASE_W,BASE_H);if(state.showGrid){stroke(0,state.gridAlpha);strokeWeight(.7);for(let x=0;x<=BASE_W;x+=GRID_STEP)line(x,0,x,BASE_H);for(let y=0;y<=BASE_H;y+=GRID_STEP)line(0,y,BASE_W,y)}}
 
-function nodeIndex(c,r){return r*GRID.cols+c}
-function nodeCR(i){return{c:i%GRID.cols,r:floor(i/GRID.cols)}}
-function nodePoint(i){const {c,r}=nodeCR(i),sx=(GRID.right-GRID.left)/(GRID.cols-1),sy=(GRID.bottom-GRID.top)/(GRID.rows-1);return{x:GRID.left+c*sx,y:GRID.top+r*sy}}
+function cellKey(c,r){return `${c},${r}`}
+function cellIndex(c,r){return r*GRID.cols+c}
+function indexCell(i){return{c:i%GRID.cols,r:floor(i/GRID.cols)}}
+function cellCenter(c,r){return{x:c*GRID_STEP+GRID_STEP/2,y:r*GRID_STEP+GRID_STEP/2}}
 function addEdge(a,b){if(!GRID.edges.has(a))GRID.edges.set(a,new Set());if(!GRID.edges.has(b))GRID.edges.set(b,new Set());GRID.edges.get(a).add(b);GRID.edges.get(b).add(a)}
-
-function buildFixedGrid(){
-  GRID.edges=new Map();
-  const horizontalRows=[0,2,4,6,8,10,12,14];
-  const verticalCols=[0,2,4,5,6,7,9,11];
-  for(const r of horizontalRows){for(let c=0;c<GRID.cols-1;c++){if((r===4&&c===5)||(r===10&&c===6))continue;addEdge(nodeIndex(c,r),nodeIndex(c+1,r))}}
-  for(const c of verticalCols){for(let r=0;r<GRID.rows-1;r++){if((c===5&&r===5)||(c===6&&r===8))continue;addEdge(nodeIndex(c,r),nodeIndex(c,r+1))}}
-  const extras=[[[1,1],[1,2]],[[1,1],[2,1]],[[3,3],[4,3]],[[3,3],[3,4]],[[8,1],[9,1]],[[8,1],[8,2]],[[8,5],[9,5]],[[8,5],[8,6]],[[1,7],[2,7]],[[1,7],[1,8]],[[3,9],[4,9]],[[3,9],[3,10]],[[8,9],[9,9]],[[8,9],[8,10]],[[1,13],[2,13]],[[9,13],[10,13]]];
-  extras.forEach(([[c1,r1],[c2,r2]])=>addEdge(nodeIndex(c1,r1),nodeIndex(c2,r2)));
+function buildGrid(){
+  GRID.blocked=new Set(BLOCKED_CELLS.map(([c,r])=>cellKey(c,r)));GRID.edges=new Map();
+  for(let r=0;r<GRID.rows;r++)for(let c=0;c<GRID.cols;c++){
+    if(GRID.blocked.has(cellKey(c,r)))continue;const a=cellIndex(c,r);
+    if(c+1<GRID.cols&&!GRID.blocked.has(cellKey(c+1,r)))addEdge(a,cellIndex(c+1,r));
+    if(r+1<GRID.rows&&!GRID.blocked.has(cellKey(c,r+1)))addEdge(a,cellIndex(c,r+1));
+  }
 }
-
-function drawGardenDots(){
-  const sx=(GRID.right-GRID.left)/(GRID.cols-1),sy=(GRID.bottom-GRID.top)/(GRID.rows-1);
-  push();noStroke();
-  GARDEN_CELLS.forEach(([c,r],i)=>{
-    // centers of grid cells: never exactly on a graph line/node
-    const x=GRID.left+(c+.5)*sx;
-    const y=GRID.top+(r+.5)*sy;
-    const d=i%5===0?16:i%3===0?11:7;
-    fill(0,i%4===0?95:62);
-    circle(x,y,d);
-    if(i%6===0){circle(x+17,y-8,5);circle(x-13,y+12,4)}
-  });
+function drawBlockedDots(){
+  push();noStroke();fill(COLORS.black);
+  BLOCKED_CELLS.forEach(([c,r])=>{const p=cellCenter(c,r);circle(p.x,p.y,6)});
   pop();
 }
-
-function nearestNode(pt){let best=0,bd=Infinity;for(let i=0;i<GRID.cols*GRID.rows;i++){if(!GRID.edges.has(i))continue;const p=nodePoint(i),d=dist(pt.x,pt.y,p.x,p.y);if(d<bd){bd=d;best=i}}return best}
-function bfsPath(start,end){if(start===end)return[start];const q=[start],prev=new Map([[start,null]]);while(q.length){const cur=q.shift();for(const n of(GRID.edges.get(cur)||[])){if(prev.has(n))continue;prev.set(n,cur);if(n===end){const path=[end];let k=end;while(prev.get(k)!==null){k=prev.get(k);path.push(k)}return path.reverse()}q.push(n)}}return[start,end]}
+function nearestNode(pt){let best=0,bd=Infinity;for(const i of GRID.edges.keys()){const {c,r}=indexCell(i),p=cellCenter(c,r),d=dist(pt.x,pt.y,p.x,p.y);if(d<bd){bd=d;best=i}}return best}
+function bfsPath(start,end){if(start===end)return[start];const q=[start],prev=new Map([[start,null]]);while(q.length){const cur=q.shift();for(const n of(GRID.edges.get(cur)||[])){if(prev.has(n))continue;prev.set(n,cur);if(n===end){const path=[end];let k=end;while(prev.get(k)!==null){k=prev.get(k);path.push(k)}return path.reverse()}q.push(n)}}return[start]}
 
 function drawIdentity(){const ink=isDark(state.bgColor)?COLORS.white:COLORS.black;textAlign(LEFT,TOP);textFont('Helvetica');textStyle(BOLD);noStroke();fill(COLORS.pink);textSize(42);text(state.title||'',61,35);stroke(COLORS.black);strokeWeight(5);fill(COLORS.white);text(state.title||'',55,29);noStroke();fill(ink);textSize(28);text(state.year||'',57,80);textSize(12);text(state.info||'',58,118);textAlign(LEFT,BOTTOM);text(state.footer||'',55,BASE_H-26)}
 function isDark(hex){const c=color(hex);return(red(c)+green(c)+blue(c))/3<100}
-function drawPlaceLabels(){for(let i=0;i<state.places.length;i++){const p=state.places[i],S=state.scales.label,h=48;push();translate(p.x,p.y);scale(S);fill(i%2===0?COLORS.acid:COLORS.white);stroke(COLORS.black);strokeWeight(3);rect(0,0,p.w,h,5);noStroke();textAlign(LEFT,CENTER);textSize(26);text(p.icon||'',10,h/2+1);fill(COLORS.black);textFont('Helvetica');textStyle(BOLD);textSize(12);text(p.name,47,h/2+1);pop()}}
-function getPlaceCenter(index){const p=state.places[constrain(index,0,state.places.length-1)];return{x:p.x+p.w*state.scales.label/2,y:p.y+24*state.scales.label}}
-function buildRatRoute(ratIndex){
-  const r=state.rats[ratIndex]||state.rats[0],a=getPlaceCenter(r.from),b=getPlaceCenter(r.to),start=nearestNode(a),end=nearestNode(b),ids=bfsPath(start,end);
-  const pts=[a,nodePoint(start),...ids.slice(1,-1).map(nodePoint),nodePoint(end),b];
-  return orthogonalizeRoute(pts);
-}
-function orthogonalizeRoute(points){
-  const out=[points[0]];
-  for(let i=1;i<points.length;i++){
-    const prev=out[out.length-1],next=points[i];
-    if(abs(prev.x-next.x)>1&&abs(prev.y-next.y)>1){out.push({x:next.x,y:prev.y})}
-    out.push(next);
+
+function drawPlaceLabels(){
+  for(let i=0;i<state.places.length;i++){
+    const p=state.places[i],S=state.scales.label,labelH=34,iconY=34;
+    push();translate(p.x,p.y);scale(S);
+    noStroke();textAlign(CENTER,CENTER);textSize(42);text(p.icon||'',p.w/2,iconY);
+    fill(i%2===0?COLORS.acid:COLORS.white);stroke(COLORS.black);strokeWeight(2);rect(0,62,p.w,labelH,5);
+    noStroke();fill(COLORS.black);textFont('Helvetica');textStyle(BOLD);textSize(11);textAlign(CENTER,CENTER);text(p.name,p.w/2,79);
+    pop();
   }
-  return out;
 }
+function getPlaceCenter(index){const p=state.places[constrain(index,0,state.places.length-1)],S=state.scales.label;return{x:p.x+(p.w*S)/2,y:p.y+79*S}}
+function buildRatRoute(ratIndex){const r=state.rats[ratIndex]||state.rats[0],a=getPlaceCenter(r.from),b=getPlaceCenter(r.to),start=nearestNode(a),end=nearestNode(b),ids=bfsPath(start,end),pts=[a];ids.forEach(id=>{const {c,r}=indexCell(id);pts.push(cellCenter(c,r))});pts.push(b);return orthogonalizeRoute(pts)}
+function orthogonalizeRoute(points){const out=[points[0]];for(let i=1;i<points.length;i++){const prev=out[out.length-1],next=points[i];if(abs(prev.x-next.x)>1&&abs(prev.y-next.y)>1)out.push({x:next.x,y:prev.y});out.push(next)}return out}
 
 function drawFinalComposition(){for(let i=0;i<state.popups.length;i++)drawPopupCard(i,1);for(let i=0;i<state.ratCount;i++){const route=buildRatRoute(i),end=route[route.length-1];drawRat(end.x,end.y,i)}drawLogoHeartsFinal()}
 function drawAnimatedSequence(){const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1),ratEnd=.42,popupStart=.47,popupEnd=.73,logos=.77;for(let i=0;i<state.ratCount;i++){const delay=i*.045,local=constrain((t-delay)/(ratEnd-delay),0,1),route=buildRatRoute(i),pos=pointOnPolyline(route,easeInOutCubic(local));drawRat(pos.x,pos.y,i)}const n=max(1,state.popups.length);for(let i=0;i<n;i++){const s=popupStart+(popupEnd-popupStart)*(i/max(1,n-1));if(t>=s)drawPopupCard(i,popupEase(t,s))}drawLogoHeartSequence(t,logos)}
@@ -218,17 +157,10 @@ function drawLogoHeartSequence(t,start){const step=.045;for(let i=0;i<3;i++){con
 function drawLogoSlot(i,logoAmount,heartScale){const xs=[820,910,1000],y=1240,d=66,x=xs[i];push();translate(x,y);if(logoAmount<.98){push();scale(heartScale);noStroke();fill(COLORS.pink);textAlign(CENTER,CENTER);textSize(54);text('♥',0,0);pop()}if(logoAmount>0){push();scale(logoAmount);fill(COLORS.white);stroke(COLORS.black);strokeWeight(2);circle(0,0,d);const img=state.logos[i];if(img){const m=d*.7,s=min(m/img.width,m/img.height);imageMode(CENTER);image(img,0,0,img.width*s,img.height*s);imageMode(CORNER)}else{noStroke();fill(COLORS.black);textAlign(CENTER,CENTER);textFont('Helvetica');textStyle(BOLD);textSize(9);text(state.logoLabels[i],0,0)}pop()}pop()}
 function drawHeartBurst(i,q){const xs=[820,910,1000],y=1240,x=xs[i];push();translate(x,y);noStroke();fill(COLORS.pink);for(let k=0;k<8;k++){const a=TWO_PI*k/8,r=18+q*58;push();translate(cos(a)*r,sin(a)*r);textAlign(CENTER,CENTER);textSize(18*(1-q)+5);text('♥',0,0);pop()}pop()}
 
-function drawStrobeFinal(){
-  const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1),q=constrain((t-.86)/.14,0,1),flash=floor(sequence.elapsed/95);
-  const c=BG_PALETTE[(flash+sequence.strobeOffset)%BG_PALETTE.length];noStroke();fill(c);rect(0,0,BASE_W,BASE_H);
-  drawIdentity();
-  // deliberately absurd scale: mouse is larger than the whole composition language.
-  const pad=520,x=sequence.finalDir===1?lerp(-pad,BASE_W+pad,q):lerp(BASE_W+pad,-pad,q);
-  push();translate(x,sequence.finalY);if(sequence.finalDir<0)scale(-1,1);textAlign(CENTER,CENTER);textSize(620);noStroke();text('🐁',0,0);pop();
-}
+function drawStrobeFinal(){const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1),q=constrain((t-.86)/.14,0,1),flash=floor(sequence.elapsed/95);const c=BG_PALETTE[(flash+sequence.strobeOffset)%BG_PALETTE.length];noStroke();fill(c);rect(0,0,BASE_W,BASE_H);drawIdentity();const pad=520,x=sequence.finalDir===1?lerp(-pad,BASE_W+pad,q):lerp(BASE_W+pad,-pad,q);push();translate(x,sequence.finalY);if(sequence.finalDir<0)scale(-1,1);textAlign(CENTER,CENTER);textSize(620);noStroke();text('🐁',0,0);pop()}
 
 function screenToWorld(mx,my){return{x:(mx-view.ox)/view.s,y:(my-view.oy)/view.s}}
-function mousePressed(){if(sequence.mode!=='compose'||mouseX>=view.artViewportW)return;const m=screenToWorld(mouseX,mouseY);for(let i=state.popupPositions.length-1;i>=0;i--){const p=state.popupPositions[i],sz=popupSize(i),w=sz.w*state.scales.popup,h=sz.h*state.scales.popup;if(m.x>=p.x&&m.x<=p.x+w&&m.y>=p.y&&m.y<=p.y+h){dragType='popup';dragIndex=i;dragOffX=m.x-p.x;dragOffY=m.y-p.y;return}}for(let i=state.places.length-1;i>=0;i--){const p=state.places[i],w=p.w*state.scales.label,h=48*state.scales.label;if(m.x>=p.x&&m.x<=p.x+w&&m.y>=p.y&&m.y<=p.y+h){dragType='place';dragIndex=i;dragOffX=m.x-p.x;dragOffY=m.y-p.y;return}}}
-function mouseDragged(){if(sequence.mode!=='compose'||dragIndex<0)return;const m=screenToWorld(mouseX,mouseY);if(dragType==='popup'){const p=state.popupPositions[dragIndex];p.x=constrain(m.x-dragOffX,0,BASE_W-180);p.y=constrain(m.y-dragOffY,0,BASE_H-120);const c=select(`#coords-${dragIndex}`);if(c)c.html(`x ${round(p.x)} · y ${round(p.y)}`)}else if(dragType==='place'){const p=state.places[dragIndex];p.x=constrain(m.x-dragOffX,0,BASE_W-p.w);p.y=constrain(m.y-dragOffY,0,BASE_H-48);const c=select(`#place-coords-${dragIndex}`);if(c)c.html(`x ${round(p.x)} · y ${round(p.y)}`);if(placeStatusEl)placeStatusEl.html('modifiche non ancora fissate')}}
+function mousePressed(){if(sequence.mode!=='compose'||mouseX>=view.artViewportW)return;const m=screenToWorld(mouseX,mouseY);for(let i=state.popupPositions.length-1;i>=0;i--){const p=state.popupPositions[i],sz=popupSize(i),w=sz.w*state.scales.popup,h=sz.h*state.scales.popup;if(m.x>=p.x&&m.x<=p.x+w&&m.y>=p.y&&m.y<=p.y+h){dragType='popup';dragIndex=i;dragOffX=m.x-p.x;dragOffY=m.y-p.y;return}}for(let i=state.places.length-1;i>=0;i--){const p=state.places[i],w=p.w*state.scales.label,h=96*state.scales.label;if(m.x>=p.x&&m.x<=p.x+w&&m.y>=p.y&&m.y<=p.y+h){dragType='place';dragIndex=i;dragOffX=m.x-p.x;dragOffY=m.y-p.y;return}}}
+function mouseDragged(){if(sequence.mode!=='compose'||dragIndex<0)return;const m=screenToWorld(mouseX,mouseY);if(dragType==='popup'){const p=state.popupPositions[dragIndex];p.x=constrain(m.x-dragOffX,0,BASE_W-180);p.y=constrain(m.y-dragOffY,0,BASE_H-120);const c=select(`#coords-${dragIndex}`);if(c)c.html(`x ${round(p.x)} · y ${round(p.y)}`)}else if(dragType==='place'){const p=state.places[dragIndex];p.x=constrain(m.x-dragOffX,0,BASE_W-p.w*state.scales.label);p.y=constrain(m.y-dragOffY,0,BASE_H-96*state.scales.label);const c=select(`#place-coords-${dragIndex}`);if(c)c.html(`x ${round(p.x)} · y ${round(p.y)}`);if(placeStatusEl)placeStatusEl.html('modifiche non ancora fissate')}}
 function mouseReleased(){dragType=null;dragIndex=-1}
 function windowResized(){resizeCanvas(windowWidth,windowHeight)}
