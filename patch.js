@@ -1,10 +1,12 @@
-// STEP 21 PATCH — dual IG exports + fruit logo bursts + ARCI + distributed starts + floating rats + house burst + giant mouse finale
+// STEP 22 PATCH — dual IG exports + concentric pink waves + ARCI + distributed starts + 2x floating rats + giant mouse finale
 
 const LOGO_ICON_STORAGE_KEY='ex-casa-logo-icons-v2';
 state.logoIcons=['🍒','🍋','🍇'];
 state.arciLogo=null;
 state._recordTargets=[];
 state._recordRAF=null;
+// Rats are intentionally large/readable by default.
+state.scales.rat=2;
 
 try{
   const saved=JSON.parse(localStorage.getItem(LOGO_ICON_STORAGE_KEY)||'null');
@@ -15,7 +17,7 @@ function saveLogoIcons(){
   try{localStorage.setItem(LOGO_ICON_STORAGE_KEY,JSON.stringify(state.logoIcons))}catch(e){console.warn(e)}
 }
 
-// Extend the logo section safely: custom burst icon + ARCI logo upload.
+// Extend the logo section safely: custom icon + ARCI logo upload.
 const _buildEditor=buildEditor;
 buildEditor=function(){
   _buildEditor();
@@ -35,7 +37,7 @@ buildEditor=function(){
     const wrap=document.createElement('div');
     wrap.className='field burst-icon-input';
     const label=document.createElement('label');
-    label.textContent=`ICONA ${i+1} DA SCOPPIARE`;
+    label.textContent=`ICONA ${i+1}`;
     const input=document.createElement('input');
     input.type='text';
     input.value=state.logoIcons[i]||['🍒','🍋','🍇'][i];
@@ -126,14 +128,14 @@ function drawArciMark(){
   pop();
 }
 
-// Floating mouse: soft shadow underneath the emoji.
+// Floating mouse: 2x default size + soft shadow underneath.
 drawRat=function(x,y,i){
   const S=state.scales.rat;
   push();
   noStroke();
-  fill(0,38);
-  ellipse(x+4*S,y+26*S,48*S,15*S);
-  translate(x,y-5*S);
+  fill(0,42);
+  ellipse(x+5*S,y+27*S,52*S,16*S);
+  translate(x,y-7*S);
   if(i%2)scale(-1,1);
   textAlign(CENTER,CENTER);
   textSize(48*S);
@@ -150,7 +152,6 @@ drawPopupCard=function(i,a){
   stroke(0,45);strokeWeight(1);noFill();rect(0,0,w,h,15);
   noStroke();fill('#ECECEF');rect(0,0,w,32,15,15,0,0);
   fill(0,100);circle(17,16,9);circle(31,16,9);circle(45,16,9);
-
   fill(COLORS.black);textAlign(LEFT,TOP);
   textFont('Helvetica');textStyle(NORMAL);textSize(15);text(d.date||'',15,47);
   textFont('Helvetica');textStyle(BOLD);textSize(27);text(d.title||'',15,70,w-30,43);
@@ -158,7 +159,7 @@ drawPopupCard=function(i,a){
   pop();
 };
 
-// ---------- HOUSE BUTTON CLICK + HOUSE EXPLOSION ----------
+// ---------- HOUSE BUTTON CLICK + PINK CONCENTRIC WAVES ----------
 function housePressAmount(){
   if(sequence.mode!=='play'&&sequence.mode!=='rec')return 0;
   const hasHouseRat=state.rats.slice(0,state.ratCount).some(r=>(r?.to??0)===0);
@@ -170,32 +171,34 @@ function housePressAmount(){
   if(q<.34)return easeOutBack(q/.34);
   return 1-constrain((q-.34)/.66,0,1);
 }
-function houseBurstAmount(){
+function houseWaveAmount(){
   if(sequence.mode!=='play'&&sequence.mode!=='rec')return 0;
   const hasHouseRat=state.rats.slice(0,state.ratCount).some(r=>(r?.to??0)===0);
   if(!hasHouseRat)return 0;
   const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1);
-  return constrain((t-.445)/.055,0,1);
+  const start=.445,end=.535;
+  if(t<start||t>end)return 0;
+  return constrain((t-start)/(end-start),0,1);
 }
-function drawHouseBurst(p,S,q){
+function drawPinkWaves(cx,cy,q,maxRadius=150,weight=4){
   if(q<=0||q>=1)return;
-  const cx=p.x+(p.w*S)/2,cy=p.y+34*S;
   push();
-  textAlign(CENTER,CENTER);
-  noStroke();
-  for(let k=0;k<9;k++){
-    const a=TWO_PI*k/9 + .18;
-    const r=(18+q*105)*S;
-    const x=cx+cos(a)*r,y=cy+sin(a)*r;
-    const size=(32*(1-q)+9)*S;
-    textSize(size);
-    text('🏠',x,y);
+  noFill();
+  stroke(COLORS.pink);
+  strokeWeight(weight*(1-q*.55));
+  for(let k=0;k<4;k++){
+    const local=constrain(q-k*.105,0,1);
+    if(local<=0)continue;
+    const r=18+local*maxRadius;
+    const alpha=255*(1-local);
+    stroke(255,97,182,alpha);
+    circle(cx,cy,r*2);
   }
   pop();
 }
 
 drawPlaceLabels=function(){
-  const press=housePressAmount(),burst=houseBurstAmount();
+  const press=housePressAmount(),wave=houseWaveAmount();
   for(let i=0;i<state.places.length;i++){
     const p=state.places[i],S=state.scales.label,labelH=34,isHouse=i===0;
     push();
@@ -206,29 +209,28 @@ drawPlaceLabels=function(){
       scale(1+.05*press,1-.20*press);
       translate(-p.w/2,-79);
     }
-
-    // House icon shrinks away into its burst; other place icons stay unchanged.
-    const iconScale=isHouse?max(0,1-burst*1.25):1;
-    if(iconScale>0){
-      push();translate(p.w/2,34);scale(iconScale);noStroke();textAlign(CENTER,CENTER);textSize(42);text(p.icon||'',0,0);pop();
-    }
-
+    noStroke();textAlign(CENTER,CENTER);textSize(42);text(p.icon||'',p.w/2,34);
     if(isHouse&&press>.02)fill(lerpColor(color(COLORS.acid),color('#8B5CF6'),constrain(press,0,1)));
     else fill(i%2===0?COLORS.acid:COLORS.white);
     stroke(COLORS.black);strokeWeight(2+press*2);rect(0,62,p.w,labelH,5);
     noStroke();fill(COLORS.black);textFont('Helvetica');textStyle(BOLD);textSize(11);textAlign(CENTER,CENTER);text(p.name,p.w/2,79);
     pop();
 
-    if(isHouse)drawHouseBurst(p,S,burst);
+    if(isHouse&&wave>0){
+      const cx=p.x+(p.w*S)/2,cy=p.y+34*S;
+      drawPinkWaves(cx,cy,wave,145*S,4);
+    }
   }
 };
 
 // Partner logos aligned to footer baseline.
 const LOGO_XS=[795,885,975],LOGO_Y=1297;
 drawLogoSlot=function(i,logoAmount,iconScale){
-  const d=66,x=LOGO_XS[i],burstIcon=state.logoIcons[i]||['🍒','🍋','🍇'][i];
+  const d=66,x=LOGO_XS[i],icon=state.logoIcons[i]||['🍒','🍋','🍇'][i];
   push();translate(x,LOGO_Y);
-  if(logoAmount<.98){push();scale(iconScale);noStroke();textAlign(CENTER,CENTER);textSize(54);text(burstIcon,0,0);pop()}
+  if(logoAmount<.98){
+    push();scale(iconScale);noStroke();textAlign(CENTER,CENTER);textSize(54);text(icon,0,0);pop();
+  }
   if(logoAmount>0){
     push();scale(logoAmount);fill(COLORS.white);stroke(COLORS.black);strokeWeight(2);circle(0,0,d);
     const img=state.logos[i];
@@ -238,14 +240,11 @@ drawLogoSlot=function(i,logoAmount,iconScale){
   }
   pop();
 };
+
+// Logo transition: no fruit/icon explosion — only concentric fuchsia waves.
 drawHeartBurst=function(i,q){
-  const x=LOGO_XS[i],burstIcon=state.logoIcons[i]||['🍒','🍋','🍇'][i];
-  push();translate(x,LOGO_Y);noStroke();
-  for(let k=0;k<8;k++){
-    const a=TWO_PI*k/8,r=18+q*58;
-    push();translate(cos(a)*r,sin(a)*r);textAlign(CENTER,CENTER);textSize(18*(1-q)+5);text(burstIcon,0,0);pop();
-  }
-  pop();
+  const x=LOGO_XS[i],y=LOGO_Y;
+  drawPinkWaves(x,y,constrain(q,0,1),92,3.5);
 };
 
 // Finale: giant mouse, clipped by artboard edges — only a fragment is visible.
