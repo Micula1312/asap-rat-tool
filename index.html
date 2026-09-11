@@ -19,6 +19,7 @@
     .field input,.field textarea,.field select{width:100%;border:2px solid var(--ink);border-radius:0;padding:7px 8px;background:#fff;color:var(--ink);font:800 13px/1.05 Helvetica,Arial,sans-serif;outline:none;box-shadow:3px 3px 0 rgba(0,0,0,.14)}
     .field input:focus,.field textarea:focus,.field select:focus{background:#fff46a;box-shadow:4px 4px 0 var(--pink)}
     .field textarea{min-height:56px;resize:vertical}.popup-grid{display:grid;grid-template-columns:94px 1fr;gap:5px}.logo-input input{font-size:10px;padding:5px}
+    .burst-icon-input{margin-top:7px}.burst-icon-input input{font-size:24px!important;text-align:center;padding:4px!important}
     .control-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}.control-button,.fix-button,.mini-button{appearance:none;border:2px solid var(--ink);border-radius:0;background:#fff;color:var(--ink);padding:11px 6px 9px;cursor:pointer;font:900 11px/.9 Helvetica,Arial,sans-serif;text-transform:uppercase;box-shadow:4px 4px 0 var(--ink)}
     .control-button:nth-child(1){background:var(--acid);transform:rotate(-1deg)}.control-button:nth-child(2){background:var(--blue);transform:rotate(.7deg)}.control-button:nth-child(3){background:var(--pink);transform:rotate(-.5deg)}.control-button:hover,.fix-button:hover,.mini-button:hover{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink)}
     .rec-status{margin-top:9px;padding:8px 9px 6px;background:var(--ink);color:#fff;border:2px solid var(--ink);box-shadow:4px 4px 0 var(--red);font:900 11px/1 Helvetica,Arial,sans-serif;text-transform:uppercase}
@@ -38,5 +39,8 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/p5@1.11.10/lib/p5.min.js"></script>
 </head>
-<body><script src="engine.js"></script></body>
+<body>
+  <script src="engine.js"></script>
+  <script src="patch.js"></script>
+</body>
 </html>
