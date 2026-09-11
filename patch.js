@@ -34,8 +34,8 @@ buildEditor=function(){
     const file=e.target.files&&e.target.files[0];if(!file)return;
     const reader=new FileReader();reader.onload=ev=>loadImage(ev.target.result,img=>state.arciLogo=img);reader.readAsDataURL(file);
   });
-  arci.appendChild(arciLabel);arci.appendChild(arciInput);logoSection.elt.appendChild(arci);
-  const hint=document.createElement('div');hint.className='coords';hint.textContent='Se vuoto: ★ placeholder. Il file compare in alto a destra.';logoSection.elt.appendChild(hint);
+  arci.appendChild(arciLabel);arci.appendChild(arciInput);logoSection.appendChild(arci);
+  const hint=document.createElement('div');hint.className='coords';hint.textContent='Se vuoto: ★ placeholder. Il file compare in alto a destra.';logoSection.appendChild(hint);
 };
 
 // Spread automatic entrances: different edges first, then maximum separation.
