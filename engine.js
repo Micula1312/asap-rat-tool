@@ -1,4 +1,4 @@
-// STEP 14 — RANDOM OFFSCREEN RAT STARTS + ARRIVAL-ONLY CONTROLS
+// STEP 15 — RANDOM OFFSCREEN RAT STARTS + OLD POPUPS + FIXED DRAG
 const BASE_W=1080, BASE_H=1350, PANEL_W=360, SEQUENCE_MS=8200, GRID_STEP=24;
 const COLORS={black:'#050505',pink:'#ff61b6',white:'#fff',acid:'#dfff00',blue:'#53b7ff',red:'#ff3b30',cream:'#fff1ce'};
 const BG_PALETTE=['#8D8D8A','#F1E9FF','#91C792','#FFF1CE','#CFE8FF','#FFD7EA','#0B0B0F'];
@@ -131,10 +131,36 @@ function drawPlaceLabels(){for(let i=0;i<state.places.length;i++){const p=state.
 function drawFinalComposition(){for(let i=0;i<state.popups.length;i++)drawPopupCard(i,1);for(let i=0;i<state.ratCount;i++){const route=buildRatRoute(i),end=route[route.length-1];drawRat(end.x,end.y,i)}drawLogoHeartsFinal()}
 function drawAnimatedSequence(){const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1),ratEnd=.42,popupStart=.47,popupEnd=.73,logos=.77;for(let i=0;i<state.ratCount;i++){const delay=i*.045,local=constrain((t-delay)/(ratEnd-delay),0,1),route=buildRatRoute(i),pos=pointOnPolyline(route,easeInOutCubic(local));drawRat(pos.x,pos.y,i)}const n=max(1,state.popups.length);for(let i=0;i<n;i++){const s=popupStart+(popupEnd-popupStart)*(i/max(1,n-1));if(t>=s)drawPopupCard(i,popupEase(t,s))}drawLogoHeartSequence(t,logos)}
 function popupEase(t,s){return easeOutBack(constrain((t-s)/.065,0,1))}function pointOnPolyline(points,tt){let total=0,l=[];for(let i=0;i<points.length-1;i++){const d=dist(points[i].x,points[i].y,points[i+1].x,points[i+1].y);l.push(d);total+=d}let target=tt*total;for(let i=0;i<l.length;i++){if(target<=l[i]){const q=target/l[i];return{x:lerp(points[i].x,points[i+1].x,q),y:lerp(points[i].y,points[i+1].y,q)}}target-=l[i]}return points[points.length-1]}function easeInOutCubic(x){return x<.5?4*x*x*x:1-pow(-2*x+2,3)/2}function easeOutBack(x){const c1=1.70158,c3=c1+1;return 1+c3*pow(x-1,3)+c1*pow(x-1,2)}function drawRat(x,y,i){push();translate(x,y);if(i%2)scale(-1,1);textAlign(CENTER,CENTER);textSize(48*state.scales.rat);noStroke();text('🐁',0,0);pop()}
-function popupSize(i){const len=(state.popups[i]?.body||'').length;return{w:300,h:len>90?210:180}}function drawPopupCard(i,a){const d=state.popups[i];if(!d)return;const p=state.popupPositions[i],sz=popupSize(i),w=sz.w,h=sz.h,S=state.scales.popup*a;push();translate(p.x+w/2,p.y+h/2);scale(S);translate(-w/2,-h/2);fill(COLORS.white);stroke(COLORS.black);strokeWeight(3);rect(0,0,w,h,5);const popupColors=[COLORS.pink,COLORS.acid,COLORS.blue,COLORS.cream,COLORS.red];noStroke();fill(popupColors[i%popupColors.length]);rect(0,0,w,34,5,5,0,0);fill(COLORS.black);circle(17,17,8);circle(31,17,8);circle(45,17,8);textAlign(LEFT,TOP);textFont('Helvetica');textStyle(BOLD);textSize(15);text(d.date||'',15,47);textSize(27);text(d.title||'',15,70,w-30,43);textStyle(NORMAL);textSize(14);text(d.body||'',15,120,w-30,h-130);pop()}
+
+function popupSize(i){const len=(state.popups[i]?.body||'').length;return{w:300,h:len>90?210:180}}
+function popupBounds(i){const p=state.popupPositions[i],sz=popupSize(i),S=state.scales.popup;return{left:p.x+sz.w/2-(sz.w*S)/2,top:p.y+sz.h/2-(sz.h*S)/2,w:sz.w*S,h:sz.h*S,baseW:sz.w,baseH:sz.h,S}}
+function drawPopupCard(i,a){
+  const d=state.popups[i];if(!d)return;const p=state.popupPositions[i],sz=popupSize(i),w=sz.w,h=sz.h,S=state.scales.popup*a;
+  push();translate(p.x+w/2,p.y+h/2);scale(S);translate(-w/2,-h/2);
+  noStroke();fill('#F5F5F7');rect(0,0,w,h,15);stroke(0,45);strokeWeight(1);noFill();rect(0,0,w,h,15);
+  noStroke();fill('#ECECEF');rect(0,0,w,32,15,15,0,0);fill(0,100);circle(17,16,9);circle(31,16,9);circle(45,16,9);
+  fill(COLORS.black);textAlign(LEFT,TOP);textFont('Times New Roman');textStyle(NORMAL);textSize(17);text(d.date||'',15,46);textSize(28);text(d.title||'',15,70,w-30,45);textFont('Helvetica');textSize(14);text(d.body||'',15,120,w-30,h-130);pop();
+}
 function drawLogoHeartsFinal(){for(let i=0;i<3;i++)drawLogoSlot(i,1,1)}function drawLogoHeartSequence(t,start){const step=.045;for(let i=0;i<3;i++){const local=(t-(start+i*step))/step;if(local<0){drawLogoSlot(i,0,1);continue}if(local<.34){const q=local/.34;drawLogoSlot(i,0,1+sin(q*PI)*.75);drawHeartBurst(i,q)}else if(local<1){const q=(local-.34)/.66;drawLogoSlot(i,easeOutBack(q),max(.15,1-q*.35))}else drawLogoSlot(i,1,1)}}
 function drawLogoSlot(i,logoAmount,heartScale){const xs=[820,910,1000],y=1240,d=66,x=xs[i];push();translate(x,y);if(logoAmount<.98){push();scale(heartScale);noStroke();fill(COLORS.pink);textAlign(CENTER,CENTER);textSize(54);text('♥',0,0);pop()}if(logoAmount>0){push();scale(logoAmount);fill(COLORS.white);stroke(COLORS.black);strokeWeight(2);circle(0,0,d);const img=state.logos[i];if(img){const m=d*.7,s=min(m/img.width,m/img.height);imageMode(CENTER);image(img,0,0,img.width*s,img.height*s);imageMode(CORNER)}else{noStroke();fill(COLORS.black);textAlign(CENTER,CENTER);textFont('Helvetica');textStyle(BOLD);textSize(9);text(state.logoLabels[i],0,0)}pop()}pop()}
 function drawHeartBurst(i,q){const xs=[820,910,1000],y=1240,x=xs[i];push();translate(x,y);noStroke();fill(COLORS.pink);for(let k=0;k<8;k++){const a=TWO_PI*k/8,r=18+q*58;push();translate(cos(a)*r,sin(a)*r);textAlign(CENTER,CENTER);textSize(18*(1-q)+5);text('♥',0,0);pop()}pop()}
 function drawStrobeFinal(){const t=constrain(sequence.elapsed/SEQUENCE_MS,0,1),q=constrain((t-.86)/.14,0,1),flash=floor(sequence.elapsed/95);const c=BG_PALETTE[(flash+sequence.strobeOffset)%BG_PALETTE.length];noStroke();fill(c);rect(0,0,BASE_W,BASE_H);drawIdentity();const pad=520,x=sequence.finalDir===1?lerp(-pad,BASE_W+pad,q):lerp(BASE_W+pad,-pad,q);push();translate(x,sequence.finalY);if(sequence.finalDir<0)scale(-1,1);textAlign(CENTER,CENTER);textSize(620);noStroke();text('🐁',0,0);pop()}
-function screenToWorld(mx,my){return{x:(mx-view.ox)/view.s,y:(my-view.oy)/view.s}}function mousePressed(){if(sequence.mode!=='compose'||mouseX>=view.artViewportW)return;const m=screenToWorld(mouseX,mouseY);for(let i=state.popupPositions.length-1;i>=0;i--){const p=state.popupPositions[i],sz=popupSize(i),w=sz.w*state.scales.popup,h=sz.h*state.scales.popup;if(m.x>=p.x&&m.x<=p.x+w&&m.y>=p.y&&m.y<=p.y+h){dragType='popup';dragIndex=i;dragOffX=m.x-p.x;dragOffY=m.y-p.y;return}}for(let i=state.places.length-1;i>=0;i--){const p=state.places[i],w=p.w*state.scales.label,h=96*state.scales.label;if(m.x>=p.x&&m.x<=p.x+w&&m.y>=p.y&&m.y<=p.y+h){dragType='place';dragIndex=i;dragOffX=m.x-p.x;dragOffY=m.y-p.y;return}}}
-function mouseDragged(){if(sequence.mode!=='compose'||dragIndex<0)return;const m=screenToWorld(mouseX,mouseY);if(dragType==='popup'){const p=state.popupPositions[dragIndex];p.x=constrain(m.x-dragOffX,0,BASE_W-180);p.y=constrain(m.y-dragOffY,0,BASE_H-120);const c=select(`#coords-${dragIndex}`);if(c)c.html(`x ${round(p.x)} · y ${round(p.y)}`)}else if(dragType==='place'){const p=state.places[dragIndex];p.x=constrain(m.x-dragOffX,0,BASE_W-p.w*state.scales.label);p.y=constrain(m.y-dragOffY,0,BASE_H-96*state.scales.label);const c=select(`#place-coords-${dragIndex}`);if(c)c.html(`x ${round(p.x)} · y ${round(p.y)}`);if(placeStatusEl)placeStatusEl.html('modifiche non ancora fissate')}}function mouseReleased(){dragType=null;dragIndex=-1}function windowResized(){resizeCanvas(windowWidth,windowHeight)}
+
+function screenToWorld(mx,my){return{x:(mx-view.ox)/view.s,y:(my-view.oy)/view.s}}
+function mousePressed(){
+  if(sequence.mode!=='compose'||mouseX>=view.artViewportW)return;const m=screenToWorld(mouseX,mouseY);
+  for(let i=state.popupPositions.length-1;i>=0;i--){const b=popupBounds(i);if(m.x>=b.left&&m.x<=b.left+b.w&&m.y>=b.top&&m.y<=b.top+b.h){dragType='popup';dragIndex=i;dragOffX=m.x-b.left;dragOffY=m.y-b.top;return}}
+  for(let i=state.places.length-1;i>=0;i--){const p=state.places[i],w=p.w*state.scales.label,h=96*state.scales.label;if(m.x>=p.x&&m.x<=p.x+w&&m.y>=p.y&&m.y<=p.y+h){dragType='place';dragIndex=i;dragOffX=m.x-p.x;dragOffY=m.y-p.y;return}}
+}
+function mouseDragged(){
+  if(sequence.mode!=='compose'||dragIndex<0)return;const m=screenToWorld(mouseX,mouseY);
+  if(dragType==='popup'){
+    const p=state.popupPositions[dragIndex],b=popupBounds(dragIndex);const desiredLeft=constrain(m.x-dragOffX,0,BASE_W-b.w),desiredTop=constrain(m.y-dragOffY,0,BASE_H-b.h);
+    p.x=desiredLeft-b.baseW/2+(b.baseW*b.S)/2;p.y=desiredTop-b.baseH/2+(b.baseH*b.S)/2;
+    const c=select(`#coords-${dragIndex}`);if(c)c.html(`x ${round(p.x)} · y ${round(p.y)}`);
+  }else if(dragType==='place'){
+    const p=state.places[dragIndex];p.x=constrain(m.x-dragOffX,0,BASE_W-p.w*state.scales.label);p.y=constrain(m.y-dragOffY,0,BASE_H-96*state.scales.label);const c=select(`#place-coords-${dragIndex}`);if(c)c.html(`x ${round(p.x)} · y ${round(p.y)}`);if(placeStatusEl)placeStatusEl.html('modifiche non ancora fissate')
+  }
+}
+function mouseReleased(){dragType=null;dragIndex=-1}
+function windowResized(){resizeCanvas(windowWidth,windowHeight)}
