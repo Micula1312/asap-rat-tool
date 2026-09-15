@@ -1,5 +1,45 @@
-// STEP 29 — larger place icons + finer pill labels
-// Loaded last so this only changes the visual proportions of landmarks.
+// STEP 30 — project emoji library + larger place icons + finer pill labels
+// Canonical visual vocabulary for this project.
+
+const PROJECT_EMOJI_LIBRARY=['🐀','🕳️','🌳','⛲️','🏡','🛝','🎪','🎡','🌟','💦'];
+
+// Three stars are the default symbols for the three partner logos/bursts.
+state.logoIcons=['🌟','🌟','🌟'];
+try{localStorage.setItem('ex-casa-logo-icons-v2',JSON.stringify(state.logoIcons))}catch(e){}
+
+function installProjectEmojiLibrary(){
+  const panel=document.getElementById('editor-panel');
+  if(!panel||document.getElementById('project-emoji-library'))return;
+  const sections=[...panel.querySelectorAll('.section')];
+  const placesSection=sections.find(sec=>/luoghi/i.test(sec.querySelector('.section-title')?.textContent||''));
+  if(!placesSection)return;
+
+  const box=document.createElement('div');
+  box.id='project-emoji-library';
+  box.style.margin='2px 0 10px';
+  const label=document.createElement('div');
+  label.className='coords';
+  label.textContent='LIBRERIA ICONE PROGETTO';
+  label.style.marginBottom='5px';
+  const row=document.createElement('div');
+  row.style.display='flex';row.style.flexWrap='wrap';row.style.gap='4px';
+  PROJECT_EMOJI_LIBRARY.forEach(icon=>{
+    const chip=document.createElement('span');
+    chip.textContent=icon;
+    chip.title='Icona disponibile per i luoghi';
+    chip.style.cssText='display:inline-flex;width:28px;height:28px;align-items:center;justify-content:center;background:#fff;border:1.5px solid #050505;font-size:18px;line-height:1;';
+    row.appendChild(chip);
+  });
+  box.append(label,row);
+  const firstEditor=placesSection.querySelector('.place-editor');
+  if(firstEditor)placesSection.insertBefore(box,firstEditor);else placesSection.appendChild(box);
+}
+
+const _setupProjectEmojiLibrary=setup;
+setup=function(){
+  _setupProjectEmojiLibrary();
+  installProjectEmojiLibrary();
+};
 
 drawPlaceLabels=function(){
   const press=housePressAmount(),wave=houseWaveAmount();
@@ -19,7 +59,6 @@ drawPlaceLabels=function(){
       translate(-p.w/2,-(labelY+labelH/2));
     }
 
-    // Landmark icon is deliberately much more prominent than its caption.
     push();
     translate(0,bounce);
     drawingContext.globalAlpha=1;
@@ -29,7 +68,6 @@ drawPlaceLabels=function(){
     text(p.icon||'',p.w/2,35);
     pop();
 
-    // Thin compact pill: less vertical mass and tighter horizontal padding.
     textFont('Helvetica');
     textStyle(BOLD);
     textSize(9.5);
