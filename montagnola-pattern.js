@@ -22,14 +22,9 @@
   }
   window.drawMontagnolaDots=dottedMontagnola;
 
-  // Old Pac-Man blocked-cell dots are no longer drawn: the Montagnola retinatura
-  // is now the single meaningful dotted layer. GRID.blocked still exists internally
-  // for routing, so rat movement behaviour is not changed.
-  if(typeof window.drawBlockedDots==='function') window.drawBlockedDots=function(){};
-  try{ drawBlockedDots=function(){}; }catch(e){}
-
-  ['drawFinalComposition','drawAnimatedSequence'].forEach(name=>{
-    const original=window[name];if(typeof original!=='function')return;
-    window[name]=function(){dottedMontagnola();return original.apply(this,arguments)};
-  });
+  // engine.js calls drawBlockedDots BEFORE identity, labels, icons, rats and popups.
+  // Reuse exactly that background layer for the Montagnola pattern, so every
+  // functional/content element is always rendered cleanly ABOVE the dots.
+  window.drawBlockedDots=dottedMontagnola;
+  try{ drawBlockedDots=dottedMontagnola; }catch(e){}
 })();
