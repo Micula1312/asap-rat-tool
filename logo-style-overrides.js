@@ -1,22 +1,37 @@
-// Shared logo treatment: transparent by default, optional white disc, never a black stroke.
+// Shared logo treatment: visibility toggle, transparent by default, optional white disc, never a black stroke.
 (function(){
   state.logoBackground='none';
+  state.showLogoBand=true;
   const previousBuild=buildEditor;
   buildEditor=function(){
     previousBuild();
     const sections=[...document.querySelectorAll('#editor-panel .section')];
     const sec=sections.find(s=>/loghi/i.test(s.querySelector('.section-title')?.textContent||''));
     if(!sec||sec.querySelector('#logo-bg-mode'))return;
+
+    const vis=document.createElement('div');vis.className='field';vis.id='logo-visibility';
+    vis.innerHTML='<label style="display:flex;align-items:center;gap:7px"><input id="logo-band-on" type="checkbox" checked> VISUALIZZA LOGHI</label>';
+    vis.querySelector('input').onchange=e=>{
+      state.showLogoBand=e.target.checked;
+      if(state.showLogoBand){
+        const ticker=document.getElementById('anim-ticker-on');
+        if(ticker&&ticker.checked){ticker.checked=false;ticker.dispatchEvent(new Event('change'))}
+      }
+    };
+
     const field=document.createElement('div');field.className='field';field.id='logo-bg-mode';
     const label=document.createElement('label');label.textContent='SFONDO LOGHI';
     const select=document.createElement('select');
     select.innerHTML='<option value="none">NESSUNO</option><option value="white">BIANCO</option>';
     select.value=state.logoBackground;
     select.onchange=()=>state.logoBackground=select.value;
-    field.append(label,select);sec.insertBefore(field,sec.firstChild.nextSibling);
+    field.append(label,select);
+    sec.insertBefore(field,sec.firstChild.nextSibling);
+    sec.insertBefore(vis,field);
   };
 
   drawLogoSlot=function(i,logoAmount,iconScale){
+    if(!state.showLogoBand)return;
     const d=66,x=[795,885,975][i],y=1297,icon=state.logoIcons[i]||['🍒','🍋','🍇'][i];
     push();translate(x,y);
     if(logoAmount<.98){push();scale(iconScale);noStroke();textAlign(CENTER,CENTER);textSize(54);text(icon,0,0);pop()}
