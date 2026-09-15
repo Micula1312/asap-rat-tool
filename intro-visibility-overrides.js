@@ -1,4 +1,5 @@
-// POST 02 — visibility controls: either logo band or scrolling tickers.
+// POST 02 — choose one system: full identity block OR scrolling tickers.
+// Identity block = title/year/info/footer + ARCI/top mark + partner logos.
 (function(){
   const panel=document.getElementById('panel');
   if(!panel)return;
@@ -9,42 +10,40 @@
 
   const row=document.createElement('label');
   row.className='check';
-  row.innerHTML='<input id="logosOn" type="checkbox"> VISUALIZZA LOGHI';
+  row.innerHTML='<input id="logosOn" type="checkbox"> VISUALIZZA BLOCCO IDENTITÀ';
   logoSec.insertBefore(row,logoSec.children[1]||null);
-  const logosOn=row.querySelector('input');
+  const brandOn=row.querySelector('input');
 
-  // Strisce are already ON by default, so logos start OFF.
+  s.showBrandBlock=false;
   s.showLogos=false;
-  logosOn.checked=false;
+  brandOn.checked=false;
 
-  function chooseLogos(){
-    s.showLogos=logosOn.checked;
-    if(s.showLogos&&tickerOn.checked){tickerOn.checked=false}
+  // identity() contains title, year, info and copyright/footer.
+  const originalIdentity=identity;
+  identity=function(){if(s.showBrandBlock)return originalIdentity.apply(this,arguments)};
+
+  // ARCI/top image is drawn separately through imgFit(). Suppress that slot when
+  // the identity block is off; partner logos are already gated by s.showLogos.
+  const originalImgFit=imgFit;
+  imgFit=function(img,cx,cy,m){
+    if(!s.showBrandBlock&&(cy<200||cy>1150))return;
+    return originalImgFit.apply(this,arguments);
+  };
+  // Suppress the fallback ARCI star too when the identity block is off.
+  const originalFillText=x.fillText.bind(x);
+  x.fillText=function(txt){
+    if(!s.showBrandBlock&&txt==='★')return;
+    return originalFillText.apply(x,arguments);
+  };
+
+  function chooseBrand(){
+    s.showBrandBlock=brandOn.checked;
+    s.showLogos=s.showBrandBlock;
+    if(s.showBrandBlock&&tickerOn.checked)tickerOn.checked=false;
   }
   function chooseTickers(){
-    if(tickerOn.checked){s.showLogos=false;logosOn.checked=false}
+    if(tickerOn.checked){s.showBrandBlock=false;s.showLogos=false;brandOn.checked=false}
   }
-  logosOn.addEventListener('change',chooseLogos);
+  brandOn.addEventListener('change',chooseBrand);
   tickerOn.addEventListener('change',chooseTickers);
-
-  // Hide the original logo band by masking its area only when logos are OFF.
-  // Run immediately after each canvas paint; when tickers are ON their bottom band
-  // remains the final layer, so the two systems never visually compete.
-  const originalRAF=window.requestAnimationFrame.bind(window);
-  let painting=false;
-  window.requestAnimationFrame=function(cb){
-    return originalRAF(function(t){
-      cb(t);
-      if(painting||s.showLogos)return;
-      painting=true;
-      const ctx=c.getContext('2d');
-      // Logos sit around y=1250. Restore only the zone above the bottom ticker.
-      // If tickers are off, repaint with current background + dots is intentionally
-      // avoided here: instead use a clipped redraw from the canvas just above it.
-      if(!tickerOn.checked){
-        ctx.save();ctx.fillStyle=s.bg;ctx.fillRect(748,1208,276,84);ctx.restore();
-      }
-      painting=false;
-    });
-  };
 })();
