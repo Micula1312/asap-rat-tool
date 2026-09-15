@@ -1,7 +1,17 @@
-// Shared logo treatment: visibility toggle, transparent by default, optional white disc, never a black stroke.
+// POST 01 — full brand block OR scrolling tickers.
+// Brand block = title/year/info/footer + ARCI/top mark + partner logos.
 (function(){
   state.logoBackground='none';
-  state.showLogoBand=true;
+  state.showBrandBlock=true;
+
+  // logo-style-overrides loads after patch.js, so this wraps the complete identity
+  // function including the ARCI/top mark added there.
+  const previousIdentity=drawIdentity;
+  drawIdentity=function(){
+    if(!state.showBrandBlock)return;
+    return previousIdentity.apply(this,arguments);
+  };
+
   const previousBuild=buildEditor;
   buildEditor=function(){
     previousBuild();
@@ -10,10 +20,10 @@
     if(!sec||sec.querySelector('#logo-bg-mode'))return;
 
     const vis=document.createElement('div');vis.className='field';vis.id='logo-visibility';
-    vis.innerHTML='<label style="display:flex;align-items:center;gap:7px"><input id="logo-band-on" type="checkbox" checked> VISUALIZZA LOGHI</label>';
+    vis.innerHTML='<label style="display:flex;align-items:center;gap:7px"><input id="logo-band-on" type="checkbox" checked> VISUALIZZA BLOCCO IDENTITÀ</label>';
     vis.querySelector('input').onchange=e=>{
-      state.showLogoBand=e.target.checked;
-      if(state.showLogoBand){
+      state.showBrandBlock=e.target.checked;
+      if(state.showBrandBlock){
         const ticker=document.getElementById('anim-ticker-on');
         if(ticker&&ticker.checked){ticker.checked=false;ticker.dispatchEvent(new Event('change'))}
       }
@@ -31,7 +41,7 @@
   };
 
   drawLogoSlot=function(i,logoAmount,iconScale){
-    if(!state.showLogoBand)return;
+    if(!state.showBrandBlock)return;
     const d=66,x=[795,885,975][i],y=1297,icon=state.logoIcons[i]||['🍒','🍋','🍇'][i];
     push();translate(x,y);
     if(logoAmount<.98){push();scale(iconScale);noStroke();textAlign(CENTER,CENTER);textSize(54);text(icon,0,0);pop()}
