@@ -13,6 +13,7 @@
     #editor-panel{position:fixed;top:0;right:0;width:360px;height:100vh;z-index:20;overflow-y:auto;padding:12px 12px 34px;background:var(--panel);border-left:4px solid var(--ink);box-shadow:-10px 0 0 var(--pink),-14px 0 0 var(--ink)}
     #editor-panel h1{margin:0 0 5px;font:900 31px/.86 Helvetica,Arial,sans-serif;letter-spacing:-2px;text-transform:uppercase;transform:scaleX(.92);transform-origin:left top;color:#fff;-webkit-text-stroke:2px var(--ink);text-shadow:3px 3px 0 var(--pink),5px 5px 0 var(--ink)}
     #editor-panel .sub{display:inline-block;margin:5px 0 13px;padding:4px 7px 3px;background:var(--acid);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);font:900 10px/1 Helvetica,Arial,sans-serif;text-transform:uppercase;letter-spacing:.06em;transform:rotate(-1deg)}
+    .tool-nav{display:flex;gap:6px;margin:0 0 12px}.tool-nav a{color:var(--ink);font:900 10px/1 Helvetica,Arial,sans-serif;text-decoration:none;border:2px solid var(--ink);padding:6px;background:#fff;box-shadow:2px 2px 0 var(--ink)}.tool-nav a.active{background:var(--pink)}
     .section{position:relative;border-top:3px solid var(--ink);padding-top:11px;margin-top:15px}.section:nth-of-type(odd){transform:rotate(.08deg)}.section:nth-of-type(even){transform:rotate(-.08deg)}
     .section-title{display:inline-block;margin:-2px 0 9px;padding:4px 8px 3px;background:var(--ink);color:#fff;border:2px solid var(--ink);box-shadow:3px 3px 0 var(--pink);font:900 11px/.9 Helvetica,Arial,sans-serif;text-transform:uppercase;transform:rotate(-1deg)}
     .field{margin-bottom:8px}.field label{display:inline-block;margin:0 0 3px;padding:2px 4px;background:#fff;border:1px solid var(--ink);font:900 9px/1 Helvetica,Arial,sans-serif;text-transform:uppercase}
@@ -44,5 +45,12 @@
   <script src="patch.js"></script>
   <script src="final-overrides.js"></script>
   <script src="place-style-overrides.js"></script>
+  <script>
+    window.addEventListener('load',()=>{
+      const panel=document.getElementById('editor-panel');if(!panel||panel.querySelector('.tool-nav'))return;
+      const nav=document.createElement('div');nav.className='tool-nav';nav.innerHTML='<a class="active" href="index.html">ANIMAZIONE</a><a href="intro.html">POST INTRO</a>';
+      const sub=panel.querySelector('.sub');if(sub)sub.insertAdjacentElement('afterend',nav);else panel.prepend(nav);
+    });
+  </script>
 </body>
 </html>
