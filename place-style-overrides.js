@@ -1,7 +1,7 @@
 // STEP 30 — project emoji library + larger place icons + finer pill labels
 // Canonical visual vocabulary for this project.
 
-const PROJECT_EMOJI_LIBRARY=['🐀','🕳️','🌳','⛲️','🏡','🛝','🎪','🎡','🌟','💦','💗','🚨'];
+const PROJECT_EMOJI_LIBRARY=['🐀','🕳️','🌳','⛲️','🏡','🛝','🎪','🎡','🌟','💦','💗','🚨','🧜‍♀️','🪩','🎧','🎛️','🎚️','🔊','🎶','⚡','✨','💥','📡','💡'];
 
 // Three stars are the default symbols for the three partner logos/bursts.
 state.logoIcons=['🌟','🌟','🌟'];
