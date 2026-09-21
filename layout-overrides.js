@@ -82,5 +82,5 @@ drawStrobeFinal = function(){
   const c=BG_PALETTE[(flash+sequence.strobeOffset)%BG_PALETTE.length];
   noStroke();fill(c);rect(0,0,BASE_W,BASE_H);drawIdentity();
   const size=2100,pad=size*.72,x=sequence.finalDir===1?lerp(-pad,BASE_W+pad,q):lerp(BASE_W+pad,-pad,q);
-  push();translate(x,sequence.finalY);if(sequence.finalDir<0)scale(-1,1);textAlign(CENTER,CENTER);textSize(size);noStroke();text('🐁',0,0);pop();
+  push();translate(x,sequence.finalY);if(sequence.finalDir<0)scale(-1,1);textAlign(CENTER,CENTER);textSize(size);noStroke();text('🐀',0,0);pop();
 };
