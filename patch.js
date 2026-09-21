@@ -163,7 +163,7 @@ drawRat=function(x,y,i){
   if(i%2)scale(-1,1);
   textAlign(CENTER,CENTER);
   textSize(48*S);
-  text('🐁',0,0);
+  text('🐀',0,0);
   pop();
 };
 
@@ -287,7 +287,7 @@ drawStrobeFinal=function(){
     scale(1-morph*.82);
     textSize(760);
     drawingContext.globalAlpha=1-morph;
-    text('🐁',0,0);
+    text('🐀',0,0);
     drawingContext.globalAlpha=1;
     pop();
   }
