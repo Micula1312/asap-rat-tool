@@ -5,6 +5,19 @@
   if(!caption||typeof s==='undefined'||typeof x==='undefined')return;
 
   s.captionAnimation='float';
+  s.captionColor='#050505';
+  s.captionSize=44;
+
+  const captionField=caption.closest('.field');
+  const styleRow=document.createElement('div');
+  styleRow.className='row';
+  styleRow.innerHTML='<div class="field"><label>Colore scritta</label><input id="captionColor" type="color" value="#050505" style="height:38px;padding:3px;cursor:pointer"></div><div class="field"><label>Dimensione · <span id="captionSizeValue">44</span> px</label><input id="captionSize" type="range" min="18" max="120" step="1" value="44"></div>';
+  captionField.insertAdjacentElement('afterend',styleRow);
+  styleRow.querySelector('#captionColor').oninput=e=>s.captionColor=e.target.value;
+  styleRow.querySelector('#captionSize').oninput=e=>{
+    s.captionSize=Number(e.target.value);
+    styleRow.querySelector('#captionSizeValue').textContent=e.target.value;
+  };
 
   const section=document.createElement('div');
   section.className='section';
@@ -25,7 +38,7 @@
     else if(mode==='type')shown=s.playing?text.slice(0,Math.min(text.length,Math.floor(local/75))):text;
     else if(mode==='slide'&&s.playing){const p=ease(Math.min(1,local/850));tx=-320+(W/2+320)*p}
     else if(mode==='spin')rot=Math.sin(local/620)*.13;
-    x.save();x.translate(tx,ty);x.rotate(rot);x.scale(sc,sc);x.textAlign='center';x.textBaseline='middle';x.font='italic 44px Times New Roman';x.fillStyle='#050505';
+    x.save();x.translate(tx,ty);x.rotate(rot);x.scale(sc,sc);x.textAlign='center';x.textBaseline='middle';x.font=`italic ${s.captionSize||44}px Times New Roman`;x.fillStyle=s.captionColor||'#050505';
     if(mode==='wave'){
       const chars=[...text],widths=chars.map(ch=>x.measureText(ch).width),total=widths.reduce((a,b)=>a+b,0);let px=-total/2;
       chars.forEach((ch,i)=>{const w=widths[i];x.fillText(ch,px+w/2,Math.sin(local/230+i*.7)*13);px+=w});
