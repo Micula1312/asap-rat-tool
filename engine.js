@@ -1,7 +1,7 @@
 // STEP 15 — RANDOM OFFSCREEN RAT STARTS + OLD POPUPS + FIXED DRAG
 const BASE_W=1080, BASE_H=1350, PANEL_W=360, SEQUENCE_MS=8200, GRID_STEP=24;
 const COLORS={black:'#050505',pink:'#ff61b6',white:'#fff',acid:'#dfff00',blue:'#53b7ff',red:'#ff3b30',cream:'#fff1ce'};
-const BG_PALETTE=['#8D8D8A','#F1E9FF','#91C792','#FFF1CE','#CFE8FF','#FFD7EA','#0B0B0F'];
+const BG_PALETTE=['#08090B','#151619','#242529','#3A3B3F','#5A5B5E','#858588','#C5C3C4'];
 const PLACE_STORAGE_KEY='ex-casa-map-places-v1';
 const RAT_STORAGE_KEY='ex-casa-map-rats-v2';
 
