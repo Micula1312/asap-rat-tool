@@ -127,7 +127,7 @@ draw=function(){
 // ---------- FLUID RAT MOVEMENT ----------
 drawRat=function(x,y,i){
   const S=state.scales.rat;push();drawingContext.globalAlpha=1;translate(x,y);if(i%2)scale(-1,1);
-  textAlign(CENTER,CENTER);textSize(48*S);noStroke();text('🐁',0,0);drawingContext.globalAlpha=1;pop();
+  textAlign(CENTER,CENTER);textSize(48*S);noStroke();text('🐀',0,0);drawingContext.globalAlpha=1;pop();
 };
 function ratFluidEase(x){x=constrain(x,0,1);return x*x*(3-2*x)}
 function simplifyRoute(points){
