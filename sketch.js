@@ -3,7 +3,7 @@ let currentFormatKey='post45',artW=1080,artH=1350,pg;
 const PANEL_W=340,PAD=14;
 const BRUSH_PALETTE=['#0B0B0F','#E1F312','#7D3FCE','#0EC040','#DE08EE','#3ECBE8','#FF4D4D','#FF9F1C','#1E90FF'];
 const BG_PALETTE=['#FFFFFF','#0B0B0F','#F5F5F7','#FFF2CC','#EAF7FF','#F6E9FF','#EFFFF0'];
-const EMOJIS=['🐀','🐁','🧀','🕳️','🏠','📦','🍞','🥜','🗑️','🧱','🧦','🐾'];
+const EMOJIS=['🐀','🧀','🕳️','🏠','📦','🍞','🥜','🗑️','🧱','🧦','🐾'];
 let brushColorIndex=0,bgColorIndex=5,showGrid=true,eraserOn=false,isDrawing=false,viewScale=1;
 let history=[],historyMax=25,emojiScale=1,popupFontSize=44,artTitle='RAT TOOL';
 let popups=new Array(5).fill(null),draggingPopupId=-1,dragOffX=0,dragOffY=0;
