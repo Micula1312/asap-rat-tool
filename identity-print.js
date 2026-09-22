@@ -29,8 +29,29 @@
   function baseName(key){
     return `ex-casa-del-custode-logo-${key==='one'?'orizzontale':key==='two'?'due-righe':key==='ratOne'?'orizzontale-topo':key==='ratTwo'?'due-righe-topo':key==='editionTwo'?'due-righe-rat-edition':'rat-edition'}`;
   }
+  function makePrintPdf(canvas,widthMm,heightMm){
+    const jpeg=canvas.toDataURL('image/jpeg',1).split(',')[1];
+    const binary=atob(jpeg),imageBytes=new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++)imageBytes[i]=binary.charCodeAt(i);
+    const encoder=new TextEncoder(),parts=[];let length=0;
+    const offsets=[0];
+    const pushText=value=>{const bytes=encoder.encode(value);parts.push(bytes);length+=bytes.length;};
+    const pushBytes=bytes=>{parts.push(bytes);length+=bytes.length;};
+    const object=(id,body)=>{offsets[id]=length;pushText(`${id} 0 obj\n${body}\nendobj\n`);};
+    const widthPt=widthMm/25.4*72,heightPt=heightMm/25.4*72;
+    pushText('%PDF-1.4\n%EXCASA\n');
+    object(1,'<< /Type /Catalog /Pages 2 0 R >>');
+    object(2,'<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    object(3,`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${widthPt.toFixed(3)} ${heightPt.toFixed(3)}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>`);
+    offsets[4]=length;pushText(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${canvas.width} /Height ${canvas.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imageBytes.length} >>\nstream\n`);pushBytes(imageBytes);pushText('\nendstream\nendobj\n');
+    const content=`q\n${widthPt.toFixed(3)} 0 0 ${heightPt.toFixed(3)} 0 0 cm\n/Im0 Do\nQ\n`;
+    object(5,`<< /Length ${encoder.encode(content).length} >>\nstream\n${content}endstream`);
+    const xref=length;pushText('xref\n0 6\n0000000000 65535 f \n');
+    for(let i=1;i<=5;i++)pushText(`${String(offsets[i]).padStart(10,'0')} 00000 n \n`);
+    pushText(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+    return new Blob(parts,{type:'application/pdf'});
+  }
   function exportPrintPdf(key){
-    if(!window.jspdf?.jsPDF){alert('Modulo PDF non disponibile. Ricarica la pagina e riprova.');return;}
     const svg=svgs[key],source=dimensions(svg),cm=Math.max(5,Math.min(500,Number(widthInput.value)||100)),dpi=Number(dpiInput.value)||150;
     const pxW=Math.round(cm/2.54*dpi),pxH=Math.round(pxW*source.h/source.w),maxSide=12000,maxArea=64000000;
     if(pxW>maxSide||pxH>maxSide||pxW*pxH>maxArea){alert(`Dimensione troppo grande per il browser (${pxW} × ${pxH} px). Riduci i centimetri o scegli 72/150 DPI.`);return;}
@@ -38,12 +59,9 @@
     const img=new Image(),url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml'}));
     img.onload=()=>{
       const canvas=document.createElement('canvas');canvas.width=pxW;canvas.height=pxH;
-      const ctx=canvas.getContext('2d',{alpha:true});ctx.clearRect(0,0,pxW,pxH);ctx.drawImage(img,0,0,pxW,pxH);URL.revokeObjectURL(url);
+      const ctx=canvas.getContext('2d',{alpha:false});ctx.fillStyle='#ffffff';ctx.fillRect(0,0,pxW,pxH);ctx.drawImage(img,0,0,pxW,pxH);URL.revokeObjectURL(url);
       const widthMm=cm*10,heightMm=widthMm*source.h/source.w;
-      const pdf=new window.jspdf.jsPDF({orientation:widthMm>=heightMm?'landscape':'portrait',unit:'mm',format:[widthMm,heightMm],compress:true,putOnlyUsedFonts:true});
-      pdf.addImage(canvas.toDataURL('image/png'),'PNG',0,0,widthMm,heightMm,undefined,'FAST');
-      pdf.setProperties({title:`EX CASA DEL CUSTODE · ${key}`,subject:`Logo stampa ${cm} cm · ${dpi} DPI`,creator:'EX CASA ID VISIVA'});
-      pdf.save(`${baseName(key)}-${cm}cm-${dpi}dpi.pdf`);
+      dl(makePrintPdf(canvas,widthMm,heightMm),`${baseName(key)}-${cm}cm-${dpi}dpi.pdf`);
       status.textContent=`✓ PDF PRONTO · ${cm} cm · ${dpi} DPI · ${pxW.toLocaleString('it-IT')} × ${pxH.toLocaleString('it-IT')} px`;
       canvas.width=canvas.height=1;
     };
