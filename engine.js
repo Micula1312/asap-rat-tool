@@ -225,7 +225,7 @@ function refreshPopupEditors() {
     grid.class("popup-grid");
     grid.parent(sec);
     makeTextField(grid, "Data", p.date, (v) => (p.date = v));
-    makeTextField(grid, "Titolo", p.title, (v) => (p.title = v));
+    makeTextareaField(grid, "Titolo", p.title, (v) => (p.title = v));
     makeTextareaField(sec, "Testo", p.body, (v) => (p.body = v));
     const meta = createDiv(
       `x ${round(state.popupPositions[i].x)} · y ${round(state.popupPositions[i].y)}`,
@@ -670,9 +670,32 @@ function easeOutBack(x) {
   return 1 + c3 * pow(x - 1, 3) + c1 * pow(x - 1, 2);
 }
 
+function popupLineCount(value, maxWidth, fontName, fontSize, style = NORMAL) {
+  push();
+  textFont(fontName); textStyle(style); textSize(fontSize);
+  let count = 0;
+  String(value || "").split("\n").forEach((paragraph) => {
+    const words = paragraph.trim().split(/\s+/).filter(Boolean);
+    if (!words.length) { count++; return; }
+    let line = "";
+    words.forEach((word) => {
+      const test = line ? `${line} ${word}` : word;
+      if (line && textWidth(test) > maxWidth) { count++; line = word; }
+      else line = test;
+    });
+    if (line) count++;
+  });
+  pop();
+  return max(1, count);
+}
+
 function popupSize(i) {
-  const len = (state.popups[i]?.body || "").length;
-  return { w: 300, h: len > 90 ? 210 : 180 };
+  const popup = state.popups[i] || {}, w = 300,
+    titleLines = popupLineCount(popup.title, w - 30, "Helvetica", 27, BOLD),
+    bodyLines = popupLineCount(popup.body, w - 30, "Times New Roman", 15),
+    titleY = 70, titleH = titleLines * 32, bodyY = titleY + titleH + 18,
+    h = max(180, bodyY + bodyLines * 20 + 15);
+  return { w, h, titleY, titleH, bodyY };
 }
 
 function popupBounds(i) {
@@ -957,11 +980,11 @@ function drawPopupCard(i, a) {
   textFont("Helvetica");
   textStyle(BOLD);
   textSize(27);
-  text(d.title || "", 15, 70, w - 30, 43);
+  text(d.title || "", 15, sz.titleY, w - 30, sz.titleH);
   textFont("Times New Roman");
   textStyle(NORMAL);
   textSize(15);
-  text(d.body || "", 15, 120, w - 30, h - 130);
+  text(d.body || "", 15, sz.bodyY, w - 30, h - sz.bodyY - 15);
   pop();
 }
 
