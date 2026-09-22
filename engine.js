@@ -625,13 +625,13 @@ function isDark(hex) {
 }
 
 function drawFinalComposition() {
-  for (let i = 0; i < state.popups.length; i++) drawPopupCard(i, 1);
+  drawLogoHeartsFinal();
   for (let i = 0; i < state.ratCount; i++) {
     const route = buildRatRoute(i),
       end = route[route.length - 1];
     drawRat(end.x, end.y, i);
   }
-  drawLogoHeartsFinal();
+  for (let i = 0; i < state.popups.length; i++) drawPopupCard(i, 1);
 }
 
 function popupEase(t, s) {
@@ -1348,6 +1348,7 @@ function drawAnimatedSequence() {
     popupStart = 0.43,
     popupEnd = 0.69,
     logos = 0.73;
+  drawLogoHeartSequence(t, logos);
   for (let i = 0; i < state.ratCount; i++) {
     const delay = i * 0.025,
       finish = RAT_FIRST_FINISH + i * RAT_FINISH_STAGGER,
@@ -1363,7 +1364,6 @@ function drawAnimatedSequence() {
     const s = popupStart + (popupEnd - popupStart) * (i / max(1, n - 1));
     if (t >= s) drawPopupCard(i, popupEase(t, s));
   }
-  drawLogoHeartSequence(t, logos);
 }
 
 function housePressAmount() {
