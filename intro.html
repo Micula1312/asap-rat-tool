@@ -101,12 +101,17 @@
         font: 900 9px Helvetica;
         text-transform: uppercase;
       }
-      .field input {
+      .field input,
+      .field textarea {
         width: 100%;
         border: 2px solid #050505;
         padding: 7px 8px;
         background: #fff;
         font: 800 13px Helvetica;
+      }
+      .field textarea {
+        min-height: 58px;
+        resize: vertical;
       }
       .row,
       .actions {
@@ -255,15 +260,15 @@
         <div id="popupFields">
           <div class="field">
             <label>Popup 01</label
-            ><input id="p1" value="UNO SPAZIO CHE RESISTE." />
+            ><textarea id="p1">UNO SPAZIO CHE RESISTE.</textarea>
           </div>
           <div class="field">
             <label>Popup 02</label
-            ><input id="p2" value="DATI, CORPI, LUOGHI." />
+            ><textarea id="p2">DATI, CORPI, LUOGHI.</textarea>
           </div>
           <div class="field">
             <label>Popup 03</label
-            ><input id="p3" value="EX CASA DEL CUSTODE." />
+            ><textarea id="p3">EX CASA DEL CUSTODE.</textarea>
           </div>
         </div>
       </div>
@@ -455,7 +460,21 @@
       }
       function popup(txt, px, py, a = 1) {
         const w = 300,
-          h = 180,
+          maxTextWidth = w - 30;
+        x.font = "14px Helvetica";
+        const lines = [];
+        String(txt || "").split("\n").forEach((paragraph) => {
+          const words = paragraph.trim().split(/\s+/).filter(Boolean);
+          if (!words.length) { lines.push(""); return; }
+          let line = "";
+          words.forEach((word) => {
+            const test = line ? line + " " + word : word;
+            if (line && x.measureText(test).width > maxTextWidth) { lines.push(line); line = word; }
+            else line = test;
+          });
+          if (line) lines.push(line);
+        });
+        const h = Math.min(300, Math.max(180, 100 + Math.max(1, lines.length) * 20)),
           S = 1.55 * a;
         x.save();
         x.translate(px + w / 2, py + h / 2);
@@ -482,7 +501,8 @@
         x.font = "14px Helvetica";
         x.textAlign = "left";
         x.textBaseline = "top";
-        x.fillText(txt || "", 15, 70, w - 30);
+        const maxLines = Math.floor((h - 85) / 20);
+        lines.slice(0, maxLines).forEach((line, i) => x.fillText(i === maxLines - 1 && lines.length > maxLines ? line + "…" : line, 15, 70 + i * 20));
         x.restore();
       }
       function ticker(txt, y, dir, now) {
