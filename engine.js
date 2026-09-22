@@ -905,9 +905,13 @@ function drawArciMark() {
   if (state.arciLogo) {
     const img = state.arciLogo,
       s = min(maxSize / img.width, maxSize / img.height);
+    drawingContext.save();
+    drawingContext.imageSmoothingEnabled = true;
+    drawingContext.imageSmoothingQuality = "high";
     imageMode(CENTER);
     image(img, 0, 0, img.width * s, img.height * s);
     imageMode(CORNER);
+    drawingContext.restore();
   } else {
     noStroke();
     fill(COLORS.black);
@@ -978,8 +982,8 @@ function drawPinkWaves(cx, cy, q, maxRadius = 150, weight = 4) {
   pop();
 }
 
-const LOGO_XS = [735, 855, 975],
-  LOGO_Y = 1288;
+const LOGO_XS = [660, 820, 980],
+  LOGO_Y = 1275;
 
 function drawHeartBurst(i, q) {
   const x = LOGO_XS[i],
@@ -1930,7 +1934,7 @@ function installLogoStyleControls() {
 
 function drawLogoSlot(i, logoAmount, iconScale) {
   if (!state.showBrandBlock) return;
-  const d = 96,
+  const d = 128,
     x = LOGO_XS[i],
     y = LOGO_Y,
     icon = state.logoIcons[i] || ["🍒", "🍋", "🍇"][i];
@@ -1941,7 +1945,7 @@ function drawLogoSlot(i, logoAmount, iconScale) {
     scale(iconScale);
     noStroke();
     textAlign(CENTER, CENTER);
-    textSize(70);
+    textSize(90);
     text(icon, 0, 0);
     pop();
   }
@@ -1957,16 +1961,20 @@ function drawLogoSlot(i, logoAmount, iconScale) {
     if (img) {
       const m = state.logoBackground === "white" ? d * 0.72 : d * 0.92,
         s = min(m / img.width, m / img.height);
+      drawingContext.save();
+      drawingContext.imageSmoothingEnabled = true;
+      drawingContext.imageSmoothingQuality = "high";
       imageMode(CENTER);
       image(img, 0, 0, img.width * s, img.height * s);
       imageMode(CORNER);
+      drawingContext.restore();
     } else {
       noStroke();
       fill(COLORS.black);
       textAlign(CENTER, CENTER);
       textFont("Helvetica");
       textStyle(BOLD);
-      textSize(9);
+      textSize(12);
       text(state.logoLabels[i], 0, 0);
     }
     pop();
