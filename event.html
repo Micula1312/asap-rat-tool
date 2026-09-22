@@ -13,7 +13,7 @@
   <aside id="panel">
     <h1>POST 03<br>COMPOSER</h1><div class="sub">EVENT / 4:5</div>
     <nav class="nav"><a href="index.html">POST 01 · MAPPA</a><a href="intro.html">POST 02 · ICON</a><a class="active" href="event.html">POST 03 · EVENT</a><a href="identity.html">ID VISIVA</a></nav>
-    <div class="actions top-controls"><button class="action pink" id="play">▶ PLAY SEQUENZA</button><button class="action primary" id="rec">● REC</button></div>
+    <div class="top-controls"><button class="action pink" id="play">▶ PLAY SEQUENZA</button></div>
     <section class="section"><div class="title">EVENTO / POPUP</div>
       <div class="field"><label>Data</label><input id="eventDate" value="12.03.2027"></div>
       <div class="field"><label>Titolo</label><input id="eventTitle" value="TITOLO DELL’EVENTO"></div>
@@ -33,7 +33,7 @@
       <div class="field"><label>Sotto ←</label><input id="tickerBottom" value="ASAP — CUSTODIA — BOLOGNA — EVENTO"></div>
       <div class="field"><label>Velocità</label><input id="tickerSpeed" type="range" min="20" max="220" value="85"></div>
     </section>
-    <section class="section"><div class="title">EXPORT</div><div class="actions"><button class="action primary" id="save">PNG POST · 4:5</button><button class="action blue" id="saveStory">PNG STORY · 9:16</button></div><div class="hint" id="status">OUTPUT: DOWNLOADS</div></section>
+    <section class="section"><div class="title">EXPORT INSTAGRAM</div><div class="actions"><button class="action primary" id="save">PNG POST · 4:5</button><button class="action blue" id="saveStory">PNG STORY · 9:16</button></div><button class="action pink" id="rec" style="width:100%;margin-top:7px">MP4 POST · ANIMAZIONE</button><div class="hint" id="status">OUTPUT: DOWNLOADS</div></section>
   </aside>
-<script src="event.js?v=3"></script>
+<script src="vendor/mp4-muxer.js?v=1"></script><script src="ig-export.js?v=1"></script><script src="event.js?v=4"></script>
 </body></html>
