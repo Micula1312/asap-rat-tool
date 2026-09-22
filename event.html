@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>EX CASA — POST 03 · EVENT</title>
+  <style>
+    :root{--ink:#050505;--pink:#ff61b6;--acid:#dfff00;--blue:#53b7ff;--panel:#f3f3f0}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#d8d8d8;color:var(--ink);font-family:Helvetica,Arial,sans-serif}#stage{position:fixed;inset:0 360px 0 0;display:flex;align-items:center;justify-content:center;padding:18px}.art{height:min(calc(100vh - 36px),calc((100vw - 396px)*1.25));width:auto;aspect-ratio:4/5;box-shadow:0 0 0 2px var(--ink)}.art canvas{width:100%;height:100%;display:block}#panel{position:fixed;right:0;top:0;width:360px;height:100vh;overflow:auto;padding:12px 12px 34px;background:var(--panel);border-left:4px solid var(--ink);box-shadow:-10px 0 0 var(--pink),-14px 0 0 var(--ink)}h1{margin:0;font:900 30px/.86 Helvetica;letter-spacing:-2px;color:#fff;-webkit-text-stroke:2px var(--ink);text-shadow:3px 3px 0 var(--pink),5px 5px 0 var(--ink)}.sub,.title{display:inline-block;padding:4px 7px;background:var(--acid);border:2px solid var(--ink);box-shadow:3px 3px 0 var(--ink);font:900 10px Helvetica;text-transform:uppercase}.section{border-top:3px solid var(--ink);padding-top:10px;margin-top:15px}.title{background:var(--ink);color:#fff;box-shadow:3px 3px 0 var(--pink);margin-bottom:8px}.field{margin-bottom:8px}.field label{display:inline-block;margin-bottom:3px;padding:2px 4px;background:#fff;border:1px solid var(--ink);font:900 9px Helvetica;text-transform:uppercase}.field input,.field textarea{width:100%;border:2px solid var(--ink);border-radius:0;padding:7px 8px;background:#fff;color:var(--ink);font:800 13px Helvetica}.field textarea{height:82px;resize:vertical}.row,.actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}.palette{display:flex;gap:5px;flex-wrap:wrap}.swatch{width:32px;height:32px;border:2px solid var(--ink);cursor:pointer}.nav{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap}.nav a{color:var(--ink);font:900 9px Helvetica;text-decoration:none;border:2px solid var(--ink);padding:6px;background:#fff}.nav a.active{background:var(--pink)}button.action{border:2px solid var(--ink);background:#fff;padding:10px 8px;font:900 11px Helvetica;box-shadow:4px 4px 0 var(--ink);cursor:pointer}.primary{background:var(--acid)!important}.blue{background:var(--blue)!important}.pink{background:var(--pink)!important}.check{display:flex;align-items:center;gap:7px;margin:7px 0;font:900 10px Helvetica;text-transform:uppercase}.check input{width:18px;height:18px;accent-color:var(--pink)}.hint{font:900 9px/1.4 Helvetica;text-transform:uppercase;margin-top:7px}.top-controls{margin:10px 0 4px}.top-controls .action{font-size:13px;padding:12px 8px}@media(max-width:780px){#stage{inset:0 320px 0 0}#panel{width:320px}}
+  </style>
+</head>
+<body>
+  <div id="stage"><div class="art"><canvas id="eventCanvas" width="1080" height="1350"></canvas></div></div>
+  <aside id="panel">
+    <h1>POST 03<br>COMPOSER</h1><div class="sub">EVENT / 4:5</div>
+    <nav class="nav"><a href="index.html">POST 01 · MAPPA</a><a href="intro.html">POST 02 · ICON</a><a class="active" href="event.html">POST 03 · EVENT</a><a href="identity.html">ID VISIVA</a></nav>
+    <div class="actions top-controls"><button class="action pink" id="play">▶ PLAY SEQUENZA</button><button class="action primary" id="rec">● REC</button></div>
+    <section class="section"><div class="title">EVENTO / POPUP</div>
+      <div class="field"><label>Data</label><input id="eventDate" value="12.03.2027"></div>
+      <div class="field"><label>Titolo</label><input id="eventTitle" value="TITOLO DELL’EVENTO"></div>
+      <div class="field"><label>Descrizione</label><textarea id="eventDescription">Descrizione dell’evento, programma, orari e informazioni specifiche.</textarea></div>
+      <div class="field"><label>Partners</label><input id="eventPartners" value="PARTNERS / COLLABORAZIONI"></div>
+    </section>
+    <section class="section"><div class="title">IDENTITÀ</div>
+      <div class="field"><label>Titolo</label><input id="headline" value="EX CASA DEL CUSTODE"></div>
+      <div class="row"><div class="field"><label>Anno</label><input id="year" value="2026 / 2027"></div><div class="field"><label>Info</label><input id="info" value="GIARDINO DELLA MONTAGNOLA"></div></div>
+      <div class="field"><label>Footer</label><input id="footer" value="@excasadelcustode"></div>
+    </section>
+    <section class="section"><div class="title">IMMAGINE BACKGROUND</div>
+      <div class="field"><label>Immagine full-bleed</label><input id="backgroundImage" type="file" accept="image/*"></div>
+      <div class="actions"><button class="action" id="removeImage">RIMUOVI BG</button><button class="action blue" id="folder">CARTELLA</button></div>
+      <div class="field"><label>Overlay scuro</label><input id="overlay" type="range" min="0" max="0.8" step="0.05" value="0.2"></div>
+      <div class="palette" id="palette"></div>
+      <div class="hint">L’immagine riempie sempre tutto il formato senza deformarsi.</div>
+    </section>
+    <section class="section"><div class="title">STRISCE</div>
+      <label class="check"><input id="tickerOn" type="checkbox" checked> VISUALIZZA</label>
+      <div class="field"><label>Sopra →</label><input id="tickerTop" value="EX CASA DEL CUSTODE"></div>
+      <div class="field"><label>Sotto ←</label><input id="tickerBottom" value="ASAP — CUSTODIA — BOLOGNA — EVENTO"></div>
+      <div class="field"><label>Velocità</label><input id="tickerSpeed" type="range" min="20" max="220" value="85"></div>
+    </section>
+    <section class="section"><div class="title">EXPORT</div><div class="actions"><button class="action primary" id="save">PNG POST · 4:5</button><button class="action blue" id="saveStory">PNG STORY · 9:16</button></div><div class="hint" id="status">OUTPUT: DOWNLOADS</div></section>
+  </aside>
+  <script src="event.js?v=1"></script>
+</body></html>
