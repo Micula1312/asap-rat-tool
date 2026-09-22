@@ -978,8 +978,8 @@ function drawPinkWaves(cx, cy, q, maxRadius = 150, weight = 4) {
   pop();
 }
 
-const LOGO_XS = [795, 885, 975],
-  LOGO_Y = 1297;
+const LOGO_XS = [735, 855, 975],
+  LOGO_Y = 1288;
 
 function drawHeartBurst(i, q) {
   const x = LOGO_XS[i],
@@ -1447,6 +1447,91 @@ function renderCompositionPNGDataURL() {
   return out.toDataURL("image/png");
 }
 
+function canvasPNGBlob(source) {
+  return new Promise((resolve, reject) =>
+    source.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("PNG non generato"))),
+      "image/png",
+    ),
+  );
+}
+
+async function renderNativePostCanvas() {
+  if (sequence.mode === "play" || sequence.mode === "rec")
+    throw new Error("Ferma PLAY/REC prima di esportare il PNG");
+  const previous = {
+      width,
+      height,
+      mode: sequence.mode,
+      elapsed: sequence.elapsed,
+      looping: isLooping(),
+    },
+    exportWidth = BASE_W + PANEL_W + 36,
+    exportHeight = BASE_H + 36;
+  noLoop();
+  sequence.mode = "final";
+  try {
+    resizeCanvas(exportWidth, exportHeight);
+    draw();
+    const out = document.createElement("canvas");
+    out.width = BASE_W;
+    out.height = BASE_H;
+    const ctx = out.getContext("2d", { alpha: false });
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = state.bgColor;
+    ctx.fillRect(0, 0, BASE_W, BASE_H);
+    ctx.drawImage(
+      canvas,
+      view.ox,
+      view.oy,
+      BASE_W * view.s,
+      BASE_H * view.s,
+      0,
+      0,
+      BASE_W,
+      BASE_H,
+    );
+    return out;
+  } finally {
+    resizeCanvas(previous.width, previous.height);
+    sequence.mode = previous.mode;
+    sequence.elapsed = previous.elapsed;
+    if (previous.looping) loop();
+    else redraw();
+  }
+}
+
+async function saveNativePNG(format) {
+  try {
+    setStatus(`PREPARO PNG ${format === "story" ? "STORY" : "POST"}…`);
+    const post = await renderNativePostCanvas();
+    let output = post,
+      suffix = "post-4x5";
+    if (format === "story") {
+      output = document.createElement("canvas");
+      output.width = 1080;
+      output.height = 1920;
+      const ctx = output.getContext("2d", { alpha: false });
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = state.bgColor;
+      ctx.fillRect(0, 0, output.width, output.height);
+      ctx.drawImage(post, 0, (output.height - post.height) / 2);
+      suffix = "story-9x16";
+    }
+    const blob = await canvasPNGBlob(output),
+      filename = `${packageSlug()}-${suffix}-${Date.now()}.png`;
+    await writeBlobToExport(blob, filename);
+    setStatus(
+      `✓ PNG ${format === "story" ? "STORY 1080×1920" : "POST 1080×1350"} · ${(blob.size / 1024 / 1024).toFixed(1)} MB · ${state.exportFolderName}`,
+    );
+    post.width = post.height = 1;
+    if (output !== post) output.width = output.height = 1;
+  } catch (error) {
+    console.error(error);
+    setStatus(`PNG ERROR · ${error.message || error}`);
+  }
+}
+
 function packageSlug() {
   return (
     (state.title || "ex-casa")
@@ -1845,9 +1930,9 @@ function installLogoStyleControls() {
 
 function drawLogoSlot(i, logoAmount, iconScale) {
   if (!state.showBrandBlock) return;
-  const d = 66,
-    x = [795, 885, 975][i],
-    y = 1297,
+  const d = 96,
+    x = LOGO_XS[i],
+    y = LOGO_Y,
     icon = state.logoIcons[i] || ["🍒", "🍋", "🍇"][i];
   push();
   translate(x, y);
@@ -1856,7 +1941,7 @@ function drawLogoSlot(i, logoAmount, iconScale) {
     scale(iconScale);
     noStroke();
     textAlign(CENTER, CENTER);
-    textSize(54);
+    textSize(70);
     text(icon, 0, 0);
     pop();
   }
@@ -2070,6 +2155,25 @@ function installPackageAndPlaceControls() {
     );
     box.append(save, load, input);
     seqSection.appendChild(box);
+
+    const pngBox = document.createElement("div");
+    pngBox.id = "png-export-controls";
+    pngBox.style.display = "grid";
+    pngBox.style.gridTemplateColumns = "1fr 1fr";
+    pngBox.style.gap = "6px";
+    pngBox.style.marginTop = "8px";
+    const postPNG = document.createElement("button");
+    postPNG.className = "fix-button secondary";
+    postPNG.type = "button";
+    postPNG.textContent = "PNG POST · 4:5";
+    postPNG.addEventListener("click", () => saveNativePNG("post"));
+    const storyPNG = document.createElement("button");
+    storyPNG.className = "fix-button secondary";
+    storyPNG.type = "button";
+    storyPNG.textContent = "PNG STORY · 9:16";
+    storyPNG.addEventListener("click", () => saveNativePNG("story"));
+    pngBox.append(postPNG, storyPNG);
+    seqSection.appendChild(pngBox);
   }
 }
 
