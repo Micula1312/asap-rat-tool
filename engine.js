@@ -1103,9 +1103,7 @@ function copyArtboardToTargets() {
 
 function recordCopyLoop() {
   copyArtboardToTargets();
-  const active = state._recordTargets.some(
-    (t) => t.recorder && t.recorder.state !== "inactive",
-  );
+  const active = Boolean(state._mp4Export);
   if (active) state._recordRAF = requestAnimationFrame(recordCopyLoop);
 }
 
@@ -1619,62 +1617,24 @@ function loadPackageFile(file) {
 
 function startRecording() {
   try {
-    if (typeof MediaRecorder === "undefined")
-      throw new Error("MediaRecorder non disponibile");
-    if (!HTMLCanvasElement.prototype.captureStream)
-      throw new Error("canvas.captureStream non disponibile");
-    const targets = ensureRecordTargets();
+    const post = ensureRecordTargets()[0];
     copyArtboardToTargets();
-    const mime = MediaRecorder.isTypeSupported("video/webm;codecs=vp9")
-      ? "video/webm;codecs=vp9"
-      : MediaRecorder.isTypeSupported("video/webm;codecs=vp8")
-        ? "video/webm;codecs=vp8"
-        : "video/webm";
-    const stamp = Date.now();
-    state._recCheck = { started: true, mime, files: 0, bytes: 0, errors: [] };
-    targets.forEach((t) => {
-      t.chunks = [];
-      const stream = t.canvas.captureStream(60);
-      t.recorder = new MediaRecorder(stream, { mimeType: mime });
-      t.recorder.onerror = (e) => {
-        state._recCheck.errors.push(
-          String(e?.error?.message || e?.error || "MediaRecorder error"),
-        );
-      };
-      t.recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size) t.chunks.push(e.data);
-      };
-      t.recorder.onstop = async () => {
-        try {
-          const blob = new Blob(t.chunks, { type: mime });
-          if (blob.size < 1024)
-            throw new Error(`${t.label}: registrazione vuota (${blob.size} B)`);
-          await writeBlobToExport(blob, `ex-casa-${t.label}-${stamp}.webm`);
-          state._recCheck.files++;
-          state._recCheck.bytes += blob.size;
-          if (state._recCheck.files === targets.length) {
-            const mb = (state._recCheck.bytes / 1024 / 1024).toFixed(1);
-            setStatus(
-              `✓ REC OK · 2 FILE · ${mb} MB · ${state.exportFolderName}`,
-            );
-          }
-        } catch (e) {
-          console.error(e);
-          state._recCheck.errors.push(String(e.message || e));
-          setStatus("REC ERROR — CONTROLLA CONSOLE");
-        }
-      };
-      t.recorder.start(500);
+    state._recCheck = { started: true, mime: "video/mp4", files: 0, bytes: 0, errors: [] };
+    state._mp4Export = IGExport.startMP4({
+      canvas: post.canvas,
+      duration: TOTAL_SEQUENCE_MS,
+      onProgress: (progress) => setStatus(`● MP4 H.264 · ${Math.round(progress * 100)}%`),
     });
-    sequence.recorder = targets[0].recorder;
     recordCopyLoop();
-    setStatus(
-      `● RECORDING · ${mime.replace("video/", "")} · → ${state.exportFolderName}`,
-    );
+    state._mp4Export.promise.then(async (blob) => {
+      await writeBlobToExport(blob, `ex-casa-post01-animation-${Date.now()}.mp4`);
+      state._recCheck.files = 1; state._recCheck.bytes = blob.size;
+      setStatus(`✓ MP4 POST 1080×1350 · ${(blob.size / 1024 / 1024).toFixed(1)} MB · ${state.exportFolderName}`);
+    }).catch((error) => {
+      if (error.name !== "AbortError") { console.error(error); state._recCheck.errors.push(String(error.message || error)); setStatus(`MP4 ERROR · ${error.message || error}`); }
+    }).finally(() => { state._mp4Export = null; });
   } catch (e) {
-    console.error(e);
-    state._recCheck = { started: false, errors: [String(e.message || e)] };
-    setStatus(`REC ERROR · ${e.message || e}`);
+    console.error(e); state._recCheck = { started: false, errors: [String(e.message || e)] }; setStatus(`MP4 ERROR · ${e.message || e}`);
   }
 }
 
@@ -1683,15 +1643,7 @@ function stopRecording(save = true) {
     cancelAnimationFrame(state._recordRAF);
     state._recordRAF = null;
   }
-  (state._recordTargets || []).forEach((t) => {
-    if (t.recorder && t.recorder.state !== "inactive") {
-      if (!save) t.recorder.onstop = null;
-      try {
-        t.recorder.requestData();
-      } catch (e) {}
-      t.recorder.stop();
-    }
-  });
+  if (!save && state._mp4Export) { state._mp4Export.cancel(); state._mp4Export = null; }
 }
 
 function insertDynamicPlaceEditor(section, p, i) {
@@ -2058,7 +2010,7 @@ function installLogoUploadControls() {
   if (!logoSection.querySelector(".export-hint")) {
     const hint = document.createElement("div");
     hint.className = "coords export-hint";
-    hint.textContent = "REC salva automaticamente POST 4:5 + STORY 9:16.";
+    hint.textContent = "Export Instagram: PNG POST, PNG STORY e MP4 H.264 animato 1080×1350.";
     logoSection.appendChild(hint);
   }
 }
@@ -2229,7 +2181,7 @@ function buildEditor() {
   row.parent(controls);
   makeControlButton(row, "COMPOSE", setCompose);
   makeControlButton(row, "▶ PLAY", () => startSequence(false));
-  makeControlButton(row, "● REC", () => startSequence(true));
+  makeControlButton(row, "MP4 POST", () => startSequence(true));
   statusEl = createDiv("COMPOSE MODE");
   statusEl.class("rec-status");
   statusEl.parent(controls);
