@@ -18,7 +18,7 @@
   }
   function popup(progress){
     const eased=1-Math.pow(1-Math.max(0,Math.min(1,progress)),3),w=780,h=520,x=(W-w)/2,y=355;
-    ctx.save();ctx.translate(W/2,y+h/2);ctx.scale(.86+.14*eased);ctx.translate(-W/2,-(y+h/2));ctx.globalAlpha=eased;
+    ctx.save();ctx.translate(W/2,y+h/2);const popupScale=.86+.14*eased;ctx.scale(popupScale,popupScale);ctx.translate(-W/2,-(y+h/2));ctx.globalAlpha=eased;
     ctx.fillStyle='#F5F5F7';ctx.strokeStyle='#050505';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(x,y,w,h,20);ctx.fill();ctx.stroke();
     ctx.fillStyle='#ECECEF';ctx.beginPath();ctx.roundRect(x,y,w,52,[20,20,0,0]);ctx.fill();ctx.strokeStyle='rgba(0,0,0,.18)';ctx.lineWidth=1;ctx.stroke();
     ctx.fillStyle='rgba(0,0,0,.42)';[x+25,x+47,x+69].forEach(px=>{ctx.beginPath();ctx.arc(px,y+26,7,0,Math.PI*2);ctx.fill()});
