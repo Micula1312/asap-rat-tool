@@ -28,14 +28,10 @@
     ctx.font='900 18px Helvetica,Arial,sans-serif';ctx.fillStyle='#ff61b6';ctx.fillText('PARTNERS',x+42,y+h-72);ctx.fillStyle='#050505';ctx.fillText($('eventPartners').value,x+150,y+h-72);
     ctx.restore();
   }
-  function identity(){
-    ctx.textAlign='left';ctx.textBaseline='top';ctx.font='900 42px Helvetica,Arial,sans-serif';ctx.fillStyle='#ff61b6';ctx.fillText($('headline').value,61,82);ctx.strokeStyle='#050505';ctx.lineWidth=5;ctx.fillStyle='#fff';ctx.strokeText($('headline').value,55,76);ctx.fillText($('headline').value,55,76);
-    ctx.fillStyle='#fff';ctx.strokeStyle='#050505';ctx.lineWidth=4;ctx.font='900 28px Helvetica,Arial,sans-serif';ctx.strokeText($('year').value,57,127);ctx.fillText($('year').value,57,127);ctx.font='900 12px Helvetica,Arial,sans-serif';ctx.strokeText($('info').value,58,165);ctx.fillText($('info').value,58,165);ctx.textBaseline='bottom';ctx.strokeText($('footer').value,55,H-72);ctx.fillText($('footer').value,55,H-72);
-  }
   function renderFrame(now,forceFinal=false){
     const elapsed=state.playing?now-state.started:DURATION,progress=forceFinal?1:Math.max(0,Math.min(1,(elapsed-550)/500));
     ctx.fillStyle=state.bg;ctx.fillRect(0,0,W,H);if(state.image)coverImage(state.image,state.playing?1+Math.min(elapsed,DURATION)/DURATION*.025:1);
-    ctx.fillStyle=`rgba(0,0,0,${Number($('overlay').value)})`;ctx.fillRect(0,0,W,H);identity();popup(progress);
+    ctx.fillStyle=`rgba(0,0,0,${Number($('overlay').value)})`;ctx.fillRect(0,0,W,H);popup(progress);
     if($('tickerOn').checked){ticker($('tickerTop').value,0,1,now);ticker($('tickerBottom').value,H-58,-1,now)}
     if(state.playing&&elapsed>=DURATION){state.playing=false;$('play').textContent='▶ PLAY SEQUENZA';$('status').textContent='✓ FINE 5 SEC'}
   }
