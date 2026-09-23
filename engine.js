@@ -1499,12 +1499,12 @@ async function renderNativePostCanvas() {
     resizeCanvas(exportWidth, exportHeight);
     draw();
     const out = document.createElement("canvas");
-    out.width = BASE_W;
-    out.height = BASE_H;
+    out.width = BASE_W * 2;
+    out.height = BASE_H * 2;
     const ctx = out.getContext("2d", { alpha: false });
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = state.bgColor;
-    ctx.fillRect(0, 0, BASE_W, BASE_H);
+    ctx.fillRect(0, 0, out.width, out.height);
     ctx.drawImage(
       canvas,
       view.ox,
@@ -1513,8 +1513,8 @@ async function renderNativePostCanvas() {
       BASE_H * view.s,
       0,
       0,
-      BASE_W,
-      BASE_H,
+      out.width,
+      out.height,
     );
     return out;
   } finally {
@@ -1534,8 +1534,8 @@ async function saveNativePNG(format) {
       suffix = "post-4x5";
     if (format === "story") {
       output = document.createElement("canvas");
-      output.width = 1080;
-      output.height = 1920;
+      output.width = 2160;
+      output.height = 3840;
       const ctx = output.getContext("2d", { alpha: false });
       ctx.imageSmoothingEnabled = false;
       ctx.fillStyle = state.bgColor;
@@ -1547,7 +1547,7 @@ async function saveNativePNG(format) {
       filename = `${packageSlug()}-${suffix}-${Date.now()}.png`;
     await writeBlobToExport(blob, filename);
     setStatus(
-      `✓ PNG ${format === "story" ? "STORY 1080×1920" : "POST 1080×1350"} · ${(blob.size / 1024 / 1024).toFixed(1)} MB · ${state.exportFolderName}`,
+      `✓ PNG ${format === "story" ? "STORY 2160×3840" : "POST 2160×2700"} · ${(blob.size / 1024 / 1024).toFixed(1)} MB · ${state.exportFolderName}`,
     );
     post.width = post.height = 1;
     if (output !== post) output.width = output.height = 1;
@@ -1645,6 +1645,7 @@ function startRecording() {
     state._recCheck = { started: true, mime: "video/mp4", files: 0, bytes: 0, errors: [] };
     state._mp4Export = IGExport.startMP4({
       canvas: post.canvas,
+      scale: 2,
       duration: TOTAL_SEQUENCE_MS,
       onProgress: (progress) => setStatus(`● MP4 H.264 · ${Math.round(progress * 100)}%`),
     });
@@ -1652,7 +1653,7 @@ function startRecording() {
     state._mp4Export.promise.then(async (blob) => {
       await writeBlobToExport(blob, `ex-casa-post01-animation-${Date.now()}.mp4`);
       state._recCheck.files = 1; state._recCheck.bytes = blob.size;
-      setStatus(`✓ MP4 POST 1080×1350 · ${(blob.size / 1024 / 1024).toFixed(1)} MB · ${state.exportFolderName}`);
+      setStatus(`✓ MP4 POST 2160×2700 · ${(blob.size / 1024 / 1024).toFixed(1)} MB · ${state.exportFolderName}`);
     }).catch((error) => {
       if (error.name !== "AbortError") { console.error(error); state._recCheck.errors.push(String(error.message || error)); setStatus(`MP4 ERROR · ${error.message || error}`); }
     }).finally(() => { state._mp4Export = null; });
@@ -2033,7 +2034,7 @@ function installLogoUploadControls() {
   if (!logoSection.querySelector(".export-hint")) {
     const hint = document.createElement("div");
     hint.className = "coords export-hint";
-    hint.textContent = "Export Instagram: PNG POST, PNG STORY e MP4 H.264 animato 1080×1350.";
+    hint.textContent = "Export Instagram 2×: PNG POST, PNG STORY e MP4 H.264 animato 2160×2700.";
     logoSection.appendChild(hint);
   }
 }
