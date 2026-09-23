@@ -77,7 +77,7 @@
       if(!global.Mp4Muxer)throw new Error('Modulo MP4 non caricato');
       const width=canvas.width,height=canvas.height,config=await pickConfig(width,height,fps,bitrate);
       const target=new Mp4Muxer.ArrayBufferTarget();
-      const muxer=new Mp4Muxer.Muxer({target,video:{codec:'avc',width,height,frameRate:fps},fastStart:'in-memory'});
+      const muxer=new Mp4Muxer.Muxer({target,video:{codec:'avc',width,height,frameRate:fps},fastStart:'in-memory',firstTimestampBehavior:'offset'});
       let encoderError=null;
       const encoder=new VideoEncoder({output:(chunk,meta)=>{try{const raw=new Uint8Array(chunk.byteLength);chunk.copyTo(raw);const units=annexBUnits(raw),data=units.length?avccSample(units):raw,safeMeta=safeDecoderMeta(meta,units,config,width,height);muxer.addVideoChunkRaw(data,chunk.type,chunk.timestamp,chunk.duration||frameDuration,safeMeta)}catch(error){encoderError=error}},error:error=>{encoderError=error}});
       encoder.configure(config);
