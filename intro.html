@@ -353,7 +353,7 @@
       </div>
     </aside>
     <script src="vendor/mp4-muxer.js?v=1"></script>
-    <script src="ig-export.js?v=4"></script>
+    <script src="ig-export.js?v=5"></script>
     <script>
       const W = 1080,
         H = 1350,
@@ -686,13 +686,13 @@
       }
       function savePNG(story) {
         const out = document.createElement("canvas");
-        out.width = 1080; out.height = story ? 1920 : 1350;
+        out.width = 2160; out.height = story ? 3840 : 2700;
         const ox = out.getContext("2d");
         ox.fillStyle = s.bg; ox.fillRect(0, 0, out.width, out.height);
-        ox.drawImage(c, 0, story ? 285 : 0);
+        ox.drawImage(c, 0, story ? 570 : 0, 2160, 2700);
         out.toBlob(async (b) => {
           await saveBlob(b, `ex-casa-post02-${story ? "story-9x16" : "post-4x5"}-${Date.now()}.png`);
-          $("status").textContent = `✓ PNG ${story ? "STORY 1080×1920" : "POST 1080×1350"} · ${(b.size / 1024 / 1024).toFixed(1)} MB`;
+          $("status").textContent = `✓ PNG ${story ? "STORY 2160×3840" : "POST 2160×2700"} · ${(b.size / 1024 / 1024).toFixed(1)} MB`;
         }, "image/png");
       }
       $("save").onclick = () => savePNG(false);
@@ -701,11 +701,11 @@
         if (s.exporting) return;
         try {
           s.playing = true; s.started = performance.now(); s.strobeOffset = Math.floor(Math.random() * BG.length);
-          $("preview").textContent = "■ STOP"; $("status").textContent = "● MP4 H.264 · 1080×1350";
-          s.exporting = IGExport.startMP4({ canvas: c, duration: durationMs(), onProgress: (p) => $("status").textContent = `● MP4 H.264 · ${Math.round(p * 100)}%` });
+          $("preview").textContent = "■ STOP"; $("status").textContent = "● MP4 H.264 · 2160×2700";
+          s.exporting = IGExport.startMP4({ canvas: c, scale: 2, duration: durationMs(), onProgress: (p) => $("status").textContent = `● MP4 H.264 · ${Math.round(p * 100)}%` });
           const b = await s.exporting.promise;
           await saveBlob(b, `ex-casa-post02-animation-${Date.now()}.mp4`);
-          $("status").textContent = `✓ MP4 POST 1080×1350 · ${(b.size / 1024 / 1024).toFixed(1)} MB`;
+          $("status").textContent = `✓ MP4 POST 2160×2700 · ${(b.size / 1024 / 1024).toFixed(1)} MB`;
         } catch (e) {
           if (e.name !== "AbortError") { console.error(e); $("status").textContent = `MP4 ERROR · ${e.message || e}`; }
         } finally {
