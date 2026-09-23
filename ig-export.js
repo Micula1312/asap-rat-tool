@@ -35,10 +35,37 @@
     if(!global.VideoEncoder||!global.VideoFrame)throw new Error('Questo browser non supporta export MP4 H.264');
     const codecs=['avc1.640032','avc1.4d0032','avc1.42002a'];
     for(const codec of codecs){
-      const config={codec,width,height,framerate:fps,bitrate,latencyMode:'quality',avc:{format:'avc'}};
+      const config={codec,width,height,framerate:fps,bitrate,latencyMode:'quality',avc:{format:'annexb'}};
       try{const result=await VideoEncoder.isConfigSupported(config);if(result.supported)return result.config}catch(error){}
     }
     throw new Error('Encoder H.264 non disponibile in questo browser');
+  }
+  function annexBUnits(data){
+    const starts=[];
+    for(let i=0;i<data.length-3;i++){
+      if(data[i]===0&&data[i+1]===0&&data[i+2]===1){starts.push({at:i,size:3});i+=2}
+      else if(i<data.length-4&&data[i]===0&&data[i+1]===0&&data[i+2]===0&&data[i+3]===1){starts.push({at:i,size:4});i+=3}
+    }
+    if(!starts.length)return[];
+    return starts.map((start,index)=>data.slice(start.at+start.size,index+1<starts.length?starts[index+1].at:data.length)).filter(unit=>unit.length);
+  }
+  function avccSample(units){
+    const size=units.reduce((sum,unit)=>sum+4+unit.length,0),out=new Uint8Array(size);let offset=0;
+    units.forEach(unit=>{const n=unit.length;out[offset++]=(n>>>24)&255;out[offset++]=(n>>>16)&255;out[offset++]=(n>>>8)&255;out[offset++]=n&255;out.set(unit,offset);offset+=n});
+    return out;
+  }
+  function avcDescription(sps,pps){
+    const out=new Uint8Array(11+sps.length+pps.length);let i=0;
+    out[i++]=1;out[i++]=sps[1]||66;out[i++]=sps[2]||0;out[i++]=sps[3]||42;out[i++]=255;out[i++]=225;
+    out[i++]=(sps.length>>>8)&255;out[i++]=sps.length&255;out.set(sps,i);i+=sps.length;out[i++]=1;out[i++]=(pps.length>>>8)&255;out[i++]=pps.length&255;out.set(pps,i);
+    return out;
+  }
+  function safeDecoderMeta(meta,units,config,width,height){
+    const supplied=meta&&meta.decoderConfig;
+    if(supplied){return{...meta,decoderConfig:{...supplied,colorSpace:supplied.colorSpace||{primaries:'bt709',transfer:'bt709',matrix:'bt709',fullRange:false}}}}
+    const sps=units.find(unit=>(unit[0]&31)===7),pps=units.find(unit=>(unit[0]&31)===8);
+    if(!sps||!pps)return meta;
+    return{decoderConfig:{codec:config.codec,codedWidth:width,codedHeight:height,description:avcDescription(sps,pps),colorSpace:{primaries:'bt709',transfer:'bt709',matrix:'bt709',fullRange:false}}};
   }
   function startMP4(options){
     const nativeMime=nativeMP4Mime(options.canvas);
@@ -52,7 +79,7 @@
       const target=new Mp4Muxer.ArrayBufferTarget();
       const muxer=new Mp4Muxer.Muxer({target,video:{codec:'avc',width,height,frameRate:fps},fastStart:'in-memory'});
       let encoderError=null;
-      const encoder=new VideoEncoder({output:(chunk,meta)=>muxer.addVideoChunk(chunk,meta),error:error=>{encoderError=error}});
+      const encoder=new VideoEncoder({output:(chunk,meta)=>{try{const raw=new Uint8Array(chunk.byteLength);chunk.copyTo(raw);const units=annexBUnits(raw),data=units.length?avccSample(units):raw,safeMeta=safeDecoderMeta(meta,units,config,width,height);muxer.addVideoChunkRaw(data,chunk.type,chunk.timestamp,chunk.duration||frameDuration,safeMeta)}catch(error){encoderError=error}},error:error=>{encoderError=error}});
       encoder.configure(config);
       const started=performance.now(),frameDuration=Math.round(1000000/fps),total=Math.ceil(duration/1000*fps);
       let frameIndex=0;
