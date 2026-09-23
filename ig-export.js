@@ -11,6 +11,7 @@
     const promise=new Promise((resolve,reject)=>{
       rejectPromise=reject;
       try{
+        if(options.syncFrame)options.syncFrame();
         stream=canvas.captureStream(fps);
         const chunks=[];
         recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:bitrate});
@@ -23,7 +24,7 @@
           if(blob.size<1024)reject(new Error('MP4 vuoto'));else resolve(blob);
         };
         const started=performance.now();
-        const progress=now=>{if(settled)return;if(options.onProgress)options.onProgress(Math.min(1,(now-started)/duration));raf=requestAnimationFrame(progress)};
+        const progress=now=>{if(settled)return;if(options.syncFrame)options.syncFrame();if(options.onProgress)options.onProgress(Math.min(1,(now-started)/duration));raf=requestAnimationFrame(progress)};
         recorder.start(250);raf=requestAnimationFrame(progress);
         timer=setTimeout(()=>{if(recorder&&recorder.state!=='inactive')recorder.stop()},duration);
       }catch(error){settled=true;if(stream)stream.getTracks().forEach(track=>track.stop());reject(error)}
@@ -33,7 +34,7 @@
   }
   async function pickConfig(width,height,fps,bitrate){
     if(!global.VideoEncoder||!global.VideoFrame)throw new Error('Questo browser non supporta export MP4 H.264');
-    const codecs=['avc1.640032','avc1.4d0032','avc1.42002a'];
+    const codecs=['avc1.640034','avc1.640033','avc1.4d0033','avc1.640032','avc1.4d0032','avc1.42002a'];
     for(const codec of codecs){
       const config={codec,width,height,framerate:fps,bitrate,latencyMode:'quality',avc:{format:'annexb'}};
       try{const result=await VideoEncoder.isConfigSupported(config);if(result.supported)return result.config}catch(error){}
@@ -68,9 +69,17 @@
     return{decoderConfig:{codec:config.codec,codedWidth:width,codedHeight:height,description:avcDescription(sps,pps),colorSpace:{primaries:'bt709',transfer:'bt709',matrix:'bt709',fullRange:false}}};
   }
   function startMP4(options){
-    const nativeMime=nativeMP4Mime(options.canvas);
-    if(nativeMime)return startNativeMP4(options,nativeMime);
-    const canvas=options.canvas,duration=Math.max(1,Number(options.duration)||5000),fps=options.fps||DEFAULT_FPS,bitrate=options.bitrate||DEFAULT_BITRATE;
+    const sourceCanvas=options.canvas,scale=Math.max(1,Number(options.scale)||1);
+    let canvas=sourceCanvas,syncFrame=options.syncFrame||null;
+    if(scale!==1){
+      canvas=document.createElement('canvas');canvas.width=Math.round(sourceCanvas.width*scale);canvas.height=Math.round(sourceCanvas.height*scale);
+      const scaleContext=canvas.getContext('2d',{alpha:false});scaleContext.imageSmoothingEnabled=true;scaleContext.imageSmoothingQuality='high';
+      syncFrame=()=>{scaleContext.clearRect(0,0,canvas.width,canvas.height);scaleContext.drawImage(sourceCanvas,0,0,canvas.width,canvas.height)};
+    }
+    const exportOptions={...options,canvas,syncFrame};
+    const nativeMime=nativeMP4Mime(canvas);
+    if(nativeMime)return startNativeMP4(exportOptions,nativeMime);
+    const duration=Math.max(1,Number(options.duration)||5000),fps=options.fps||DEFAULT_FPS,bitrate=options.bitrate||DEFAULT_BITRATE;
     let cancelled=false,raf=0;
     const cancel=()=>{cancelled=true;if(raf)cancelAnimationFrame(raf)};
     const promise=(async()=>{
@@ -87,6 +96,7 @@
         const capture=now=>{
           if(cancelled){reject(new DOMException('Export annullato','AbortError'));return}
           if(encoderError){reject(encoderError);return}
+          if(syncFrame)syncFrame();
           const expected=Math.min(total,Math.floor((now-started)/1000*fps)+1);
           while(frameIndex<expected){
             const frame=new VideoFrame(canvas,{timestamp:frameIndex*frameDuration,duration:frameDuration});
