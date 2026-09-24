@@ -1,7 +1,11 @@
 (function(){
   const W=1080,H=1350,DURATION=5000,POP_W=780,POP_H=520,BG=['#08090B','#151619','#242529','#3A3B3F','#5A5B5E','#858588','#C5C3C4'];
   const canvas=document.getElementById('eventCanvas'),ctx=canvas.getContext('2d'),$=id=>document.getElementById(id);
-  const state={bg:BG[1],image:null,imageURL:null,playing:false,started:0,dir:null,recorder:null,drag:null,popups:[{date:'ORE 21:00',title:'ATTIVITÀ 01',description:'Descrizione, programma e informazioni specifiche dell’attività.',partners:'PARTNERS / COLLABORAZIONI',x:(W-POP_W)/2,y:355}]};
+  const state={bg:BG[1],image:null,imageURL:null,playing:false,started:0,dir:null,recorder:null,drag:null,popups:[
+    {date:'ORE 18:00',title:'ATTIVITÀ 01',description:'Descrizione e informazioni specifiche della prima attività.',partners:'PARTNERS / COLLABORAZIONI',x:70,y:260},
+    {date:'ORE 21:00',title:'ATTIVITÀ 02',description:'Descrizione e informazioni specifiche della seconda attività.',partners:'PARTNERS / COLLABORAZIONI',x:285,y:500},
+    {date:'ORE 23:00',title:'ATTIVITÀ 03',description:'Descrizione e informazioni specifiche della terza attività.',partners:'PARTNERS / COLLABORAZIONI',x:130,y:760}
+  ]};
   function coverImage(img,zoom=1){
     const scale=Math.max(W/img.width,H/img.height)*zoom,sw=W/scale,sh=H/scale,sx=(img.width-sw)/2,sy=(img.height-sh)/2;
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(img,sx,sy,sw,sh,0,0,W,H);

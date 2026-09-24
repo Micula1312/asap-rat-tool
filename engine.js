@@ -46,32 +46,30 @@ const state = {
   showGrid: true,
   gridAlpha: 16,
   title: "EX CASA DEL CUSTODE",
-  year: "2026 / 2027",
-  info: "GIARDINO DELLA MONTAGNOLA",
+  year: "MONTHLY AGENDA 2026 / 2027",
+  info: "",
   footer: "@excasadelcustode",
-  scales: { popup: 2, label: 2, rat: 1 },
+  agendaTitle: "OTTOBRE 2026",
+  agendaSubtitle: "Recap degli eventi del mese in Casetta",
+  scales: { popup: 1, label: 2, rat: 1 },
   popups: [
     {
-      date: "12.03.2026",
-      title: "EVENTO 01",
-      body: "Titolo / descrizione evento",
+      date: "01.10 · 19:30",
+      title: "RE-OPENING",
+      body: "Open studios: Maple Death e Canicola · Installazione: ASAP · Music selection: Maple Death + MORE AMORE",
     },
     {
-      date: "18.05.2026",
-      title: "EVENTO 02",
-      body: "Titolo / descrizione evento",
+      date: "08.10 · 21:00",
+      title: "ANE GAIN LIVE + TBA",
+      body: "Noise, drone e parole affilate da Torino. Lunedì il programma completo, stay tuned.",
     },
     {
-      date: "27.09.2026",
-      title: "EVENTO 03",
-      body: "Titolo / descrizione evento",
+      date: "10.10",
+      title: "SECRET AFTERPARTY",
+      body: "Sssssh...................................",
     },
   ],
-  popupPositions: [
-    { x: 520, y: 160 },
-    { x: 620, y: 500 },
-    { x: 500, y: 850 },
-  ],
+  popupPositions: [{ x: 130, y: 330 }],
   places: DEFAULT_PLACES.map((p) => ({ ...p })),
   ratCount: 2,
   rats: DEFAULT_RATS.map((r) => ({ ...r })),
@@ -201,13 +199,10 @@ function changePopupScale(delta) {
 function addPopup() {
   const i = state.popups.length;
   state.popups.push({
-    date: "00.00.2026",
+    date: "00.00 · 00:00",
     title: `EVENTO ${String(i + 1).padStart(2, "0")}`,
-    body: "Nuovo evento",
+    body: "Descrizione, artisti e partner dell’evento",
   });
-  const col = i % 2,
-    row = floor(i / 2);
-  state.popupPositions.push({ x: 80 + col * 470, y: 180 + row * 300 });
   refreshPopupEditors();
 }
 
@@ -218,21 +213,15 @@ function refreshPopupEditors() {
     const sec = createDiv();
     sec.class("popup-editor-card");
     sec.parent(popupEditorEl);
-    const title = createDiv(`POPUP ${i + 1}`);
+    const title = createDiv(`EVENTO ${String(i + 1).padStart(2, "0")}`);
     title.class("rat-title");
     title.parent(sec);
     const grid = createDiv();
     grid.class("popup-grid");
     grid.parent(sec);
-    makeTextField(grid, "Data", p.date, (v) => (p.date = v));
+    makeTextField(grid, "Data / ora", p.date, (v) => (p.date = v));
     makeTextareaField(grid, "Titolo", p.title, (v) => (p.title = v));
-    makeTextareaField(sec, "Testo", p.body, (v) => (p.body = v));
-    const meta = createDiv(
-      `x ${round(state.popupPositions[i].x)} · y ${round(state.popupPositions[i].y)}`,
-    );
-    meta.class("coords");
-    meta.id(`coords-${i}`);
-    meta.parent(sec);
+    makeTextareaField(sec, "Descrizione / with", p.body, (v) => (p.body = v));
     if (state.popups.length > 1) {
       const del = createButton("× ELIMINA");
       del.class("mini-button delete");
@@ -244,7 +233,6 @@ function refreshPopupEditors() {
 
 function removePopup(i) {
   state.popups.splice(i, 1);
-  state.popupPositions.splice(i, 1);
   refreshPopupEditors();
 }
 
@@ -631,7 +619,7 @@ function drawFinalComposition() {
       end = route[route.length - 1];
     drawRat(end.x, end.y, i);
   }
-  for (let i = 0; i < state.popups.length; i++) drawPopupCard(i, 1);
+  drawMonthlyAgendaCard(1);
 }
 
 function popupEase(t, s) {
@@ -689,18 +677,19 @@ function popupLineCount(value, maxWidth, fontName, fontSize, style = NORMAL) {
   return max(1, count);
 }
 
-function popupSize(i) {
-  const popup = state.popups[i] || {}, w = 300,
-    titleLines = popupLineCount(popup.title, w - 30, "Helvetica", 27, BOLD),
-    bodyLines = popupLineCount(popup.body, w - 30, "Times New Roman", 15),
-    titleY = 70, titleH = titleLines * 32, bodyY = titleY + titleH + 18,
-    h = max(180, bodyY + bodyLines * 20 + 15);
-  return { w, h, titleY, titleH, bodyY };
+function monthlyAgendaSize() {
+  const w = 820, headerH = 142, footerH = 22, textW = 548;
+  const rows = state.popups.map((item) => {
+    const titleLines = popupLineCount(item.title, textW, "Helvetica", 22, BOLD);
+    const bodyLines = popupLineCount(item.body, textW, "Helvetica", 15);
+    return { titleLines, bodyLines, h: max(82, titleLines * 26 + bodyLines * 19 + 20) };
+  });
+  return { w, h: max(390, headerH + rows.reduce((sum, row) => sum + row.h, 0) + footerH), headerH, rows };
 }
 
-function popupBounds(i) {
-  const p = state.popupPositions[i],
-    sz = popupSize(i),
+function popupBounds() {
+  const p = state.popupPositions[0],
+    sz = monthlyAgendaSize(),
     S = state.scales.popup;
   return {
     left: p.x + sz.w / 2 - (sz.w * S) / 2,
@@ -743,20 +732,18 @@ function screenToWorld(mx, my) {
 function mousePressed() {
   if (sequence.mode !== "compose" || mouseX >= view.artViewportW) return;
   const m = screenToWorld(mouseX, mouseY);
-  for (let i = state.popupPositions.length - 1; i >= 0; i--) {
-    const b = popupBounds(i);
-    if (
-      m.x >= b.left &&
-      m.x <= b.left + b.w &&
-      m.y >= b.top &&
-      m.y <= b.top + b.h
-    ) {
-      dragType = "popup";
-      dragIndex = i;
-      dragOffX = m.x - b.left;
-      dragOffY = m.y - b.top;
-      return;
-    }
+  const b = popupBounds();
+  if (
+    m.x >= b.left &&
+    m.x <= b.left + b.w &&
+    m.y >= b.top &&
+    m.y <= b.top + b.h
+  ) {
+    dragType = "popup";
+    dragIndex = 0;
+    dragOffX = m.x - b.left;
+    dragOffY = m.y - b.top;
+    return;
   }
   for (let i = state.places.length - 1; i >= 0; i--) {
     const p = state.places[i],
@@ -776,13 +763,13 @@ function mouseDragged() {
   if (sequence.mode !== "compose" || dragIndex < 0) return;
   const m = screenToWorld(mouseX, mouseY);
   if (dragType === "popup") {
-    const p = state.popupPositions[dragIndex],
-      b = popupBounds(dragIndex);
+    const p = state.popupPositions[0],
+      b = popupBounds();
     const desiredLeft = constrain(m.x - dragOffX, 0, BASE_W - b.w),
       desiredTop = constrain(m.y - dragOffY, 0, BASE_H - b.h);
     p.x = desiredLeft - b.baseW / 2 + (b.baseW * b.S) / 2;
     p.y = desiredTop - b.baseH / 2 + (b.baseH * b.S) / 2;
-    const c = select(`#coords-${dragIndex}`);
+    const c = select("#agenda-coords");
     if (c) c.html(`x ${round(p.x)} · y ${round(p.y)}`);
   } else if (dragType === "place") {
     const p = state.places[dragIndex];
@@ -945,11 +932,10 @@ function drawArciMark() {
   pop();
 }
 
-function drawPopupCard(i, a) {
-  const d = state.popups[i];
-  if (!d) return;
-  const p = state.popupPositions[i],
-    sz = popupSize(i),
+function drawMonthlyAgendaCard(a) {
+  if (!state.popups.length) return;
+  const p = state.popupPositions[0],
+    sz = monthlyAgendaSize(),
     w = sz.w,
     h = sz.h,
     S = state.scales.popup * a;
@@ -974,17 +960,31 @@ function drawPopupCard(i, a) {
   fill(COLORS.black);
   textAlign(LEFT, TOP);
   textFont("Helvetica");
-  textStyle(NORMAL);
-  textSize(15);
-  text(d.date || "", 15, 47);
-  textFont("Helvetica");
   textStyle(BOLD);
-  textSize(27);
-  text(d.title || "", 15, sz.titleY, w - 30, sz.titleH);
-  textFont("Times New Roman");
+  textSize(38);
+  text(state.agendaTitle || "", 24, 48, w - 48, 46);
   textStyle(NORMAL);
-  textSize(15);
-  text(d.body || "", 15, sz.bodyY, w - 30, h - sz.bodyY - 15);
+  textSize(19);
+  text(state.agendaSubtitle || "", 24, 96, w - 48, 30);
+  let rowY = sz.headerH;
+  state.popups.forEach((item, index) => {
+    const row = sz.rows[index], pillText = item.date || "";
+    if (index > 0) {
+      stroke(0, 45); strokeWeight(1); line(24, rowY, w - 24, rowY); noStroke();
+    }
+    textFont("Helvetica"); textStyle(BOLD); textSize(15);
+    const pillW = constrain(textWidth(pillText) + 30, 92, 218), pillH = 34, pillY = rowY + 17;
+    fill(COLORS.acid); stroke(COLORS.black); strokeWeight(2.2);
+    rect(24, pillY, pillW, pillH, pillH / 2);
+    noStroke(); fill(COLORS.black); textAlign(CENTER, CENTER);
+    text(pillText, 24 + pillW / 2, pillY + pillH / 2 + 1);
+    const textX = 250, textW = w - textX - 24;
+    textAlign(LEFT, TOP); textStyle(BOLD); textSize(22);
+    text(item.title || "", textX, rowY + 14, textW, row.titleLines * 26);
+    textStyle(NORMAL); textSize(15);
+    text(item.body || "", textX, rowY + 17 + row.titleLines * 26, textW, row.bodyLines * 19 + 4);
+    rowY += row.h;
+  });
   pop();
 }
 
@@ -1221,6 +1221,8 @@ try {
     if (typeof d.year === "string") state.year = d.year;
     if (typeof d.info === "string") state.info = d.info;
     if (typeof d.footer === "string") state.footer = d.footer;
+    if (typeof d.agendaTitle === "string") state.agendaTitle = d.agendaTitle;
+    if (typeof d.agendaSubtitle === "string") state.agendaSubtitle = d.agendaSubtitle;
     if (d.scales) state.scales = { ...state.scales, ...d.scales };
     if (Array.isArray(d.popups)) state.popups = d.popups.map((p) => ({ ...p }));
     if (Array.isArray(d.popupPositions))
@@ -1369,7 +1371,6 @@ const RAT_FIRST_FINISH = 0.335,
 function drawAnimatedSequence() {
   const t = constrain(sequence.elapsed / SEQUENCE_MS, 0, 1),
     popupStart = 0.43,
-    popupEnd = 0.69,
     logos = 0.73;
   drawLogoHeartSequence(t, logos);
   for (let i = 0; i < state.ratCount; i++) {
@@ -1382,11 +1383,7 @@ function drawAnimatedSequence() {
     );
     drawRat(pos.x, pos.y, i);
   }
-  const n = max(1, state.popups.length);
-  for (let i = 0; i < n; i++) {
-    const s = popupStart + (popupEnd - popupStart) * (i / max(1, n - 1));
-    if (t >= s) drawPopupCard(i, popupEase(t, s));
-  }
+  if (t >= popupStart) drawMonthlyAgendaCard(popupEase(t, popupStart));
 }
 
 function housePressAmount() {
@@ -1583,6 +1580,8 @@ function makePackage() {
       year: state.year,
       info: state.info,
       footer: state.footer,
+      agendaTitle: state.agendaTitle,
+      agendaSubtitle: state.agendaSubtitle,
       scales: { ...state.scales },
       popups: state.popups.map((p) => ({ ...p })),
       popupPositions: state.popupPositions.map((p) => ({ ...p })),
@@ -2229,8 +2228,7 @@ function buildEditor() {
   gc.changed(() => (state.showGrid = gc.checked()));
   const identity = makeSection(panel, "Identità");
   makeTextField(identity, "Titolo", state.title, (v) => (state.title = v));
-  makeTextField(identity, "Anno", state.year, (v) => (state.year = v));
-  makeTextField(identity, "Info", state.info, (v) => (state.info = v));
+  makeTextField(identity, "Format", state.year, (v) => (state.year = v));
   makeTextField(identity, "Footer", state.footer, (v) => (state.footer = v));
   const scales = makeSection(panel, "Scale");
   const popupScale = createDiv();
@@ -2297,11 +2295,19 @@ function buildEditor() {
   );
   ratHint.class("coords");
   ratHint.parent(rats);
-  const popSec = makeSection(panel, "Popup eventi");
+  const popSec = makeSection(panel, "Programma mensile");
+  makeTextField(popSec, "Titolo popup", state.agendaTitle, (v) => (state.agendaTitle = v));
+  makeTextareaField(popSec, "Sottotitolo", state.agendaSubtitle, (v) => (state.agendaSubtitle = v));
+  const agendaMeta = createDiv(
+    `popup x ${round(state.popupPositions[0].x)} · y ${round(state.popupPositions[0].y)}`,
+  );
+  agendaMeta.id("agenda-coords");
+  agendaMeta.class("coords");
+  agendaMeta.parent(popSec);
   popupEditorEl = createDiv();
   popupEditorEl.parent(popSec);
   refreshPopupEditors();
-  const add = createButton("+ AGGIUNGI POPUP");
+  const add = createButton("+ AGGIUNGI EVENTO");
   add.class("fix-button");
   add.parent(popSec);
   add.mousePressed(addPopup);
