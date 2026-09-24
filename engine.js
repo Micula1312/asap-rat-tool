@@ -33,8 +33,8 @@ const RAT_STORAGE_KEY = "ex-casa-map-rats-v2";
 
 const DEFAULT_PLACES = [
   { name: "EX CASA DEL CUSTODE", icon: "🏠", x: 92, y: 545, w: 245 },
-  { name: "PINCIO", icon: "🗿", x: 470, y: 110, w: 150 },
-  { name: "FONTANA", icon: "⛲", x: 465, y: 650, w: 165 },
+  { name: "PINCIO", icon: "🐚", x: 470, y: 110, w: 150 },
+  { name: "FONTANA", icon: "🧜‍♀️", x: 465, y: 650, w: 165 },
   { name: "VIA IRNERIO", icon: "🚪", x: 135, y: 1190, w: 190 },
   { name: "FILLA", icon: "🍸", x: 765, y: 1000, w: 130 },
 ];
@@ -1713,6 +1713,7 @@ function insertDynamicPlaceEditor(section, p, i) {
 
 const PROJECT_EMOJI_LIBRARY = [
   "🐀",
+  "🐚",
   "🕳️",
   "🌳",
   "⛲️",
