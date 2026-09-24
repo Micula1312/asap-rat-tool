@@ -363,8 +363,14 @@ function loadFixedPlaces() {
     const raw = localStorage.getItem(PLACE_STORAGE_KEY);
     if (!raw) return;
     const saved = JSON.parse(raw);
-    if (Array.isArray(saved))
+    if (Array.isArray(saved)) {
       state.places = saved.map((p, i) => ({ ...DEFAULT_PLACES[i], ...p }));
+      state.places.forEach((place) => {
+        if (place.name === "PINCIO" && place.icon === "🗿") place.icon = "🐚";
+        if (place.name === "FONTANA" && ["⛲", "⛲️"].includes(place.icon))
+          place.icon = "🧜‍♀️";
+      });
+    }
   } catch (e) {
     console.warn(e);
   }
