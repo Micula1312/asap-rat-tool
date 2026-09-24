@@ -14,10 +14,15 @@
     <h1>POST 03<br>COMPOSER</h1><div class="sub">EVENT / 4:5</div>
     <nav class="nav"><a href="index.html">POST 01 · MAPPA</a><a href="intro.html">POST 02 · ICON</a><a class="active" href="event.html">POST 03 · EVENT</a><a href="identity.html">ID VISIVA</a></nav>
     <div class="top-controls"><button class="action pink" id="play">▶ PLAY SEQUENZA</button></div>
-    <section class="section"><div class="title">EVENTO / POPUP</div>
+    <section class="section"><div class="title">TESTATA EVENTO</div>
+      <div class="field"><label>Titolo evento</label><textarea id="eventTitle">TITOLO DELL’EVENTO</textarea></div>
+      <div class="field"><label>Data evento</label><input id="eventDate" value="12.03.2027"></div>
+      <div class="hint">Il titolo usa lo stile ICON; la data è una pill come le etichette dei luoghi.</div>
+    </section>
+    <section class="section"><div class="title">ATTIVITÀ / POPUP</div>
       <div id="popupList"></div>
-      <button class="action primary" id="addPopup" style="width:100%">+ AGGIUNGI POPUP</button>
-      <div class="hint">Trascina direttamente i popup sul visual per posizionarli.</div>
+      <button class="action primary" id="addPopup" style="width:100%">+ AGGIUNGI ATTIVITÀ</button>
+      <div class="hint">Ogni attività ha orario/data, titolo, descrizione e partner. Trascina direttamente le schede sul visual.</div>
     </section>
     <section class="section"><div class="title">IMMAGINE BACKGROUND</div>
       <div class="field"><label>Immagine full-bleed</label><input id="backgroundImage" type="file" accept="image/*"></div>
@@ -34,5 +39,5 @@
     </section>
     <section class="section"><div class="title">EXPORT INSTAGRAM</div><div class="actions"><button class="action primary" id="save">PNG POST · 4:5</button><button class="action blue" id="saveStory">PNG STORY · 9:16</button></div><button class="action pink" id="rec" style="width:100%;margin-top:7px">MP4 POST · ANIMAZIONE</button><div class="hint" id="status">OUTPUT: DOWNLOADS</div></section>
   </aside>
-<script src="vendor/mp4-muxer.js?v=1"></script><script src="ig-export.js?v=5"></script><script src="event.js?v=8"></script>
+<script src="vendor/mp4-muxer.js?v=1"></script><script src="ig-export.js?v=5"></script><script src="event.js?v=9"></script>
 </body></html>
