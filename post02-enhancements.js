@@ -11,7 +11,7 @@
   }
   const logoTitle=[...panel.querySelectorAll('.title')].find(n=>n.textContent.trim()==='LOGHI');
   if(logoTitle){
-    const field=document.createElement('div');field.className='field';field.innerHTML='<label>Trattamento loghi</label><select id="logoBg" style="width:100%;border:2px solid #050505;padding:7px 8px;background:#fff;font:800 13px Helvetica"><option value="none">NESSUNO</option><option value="white">SFONDO BIANCO</option><option value="overlay-white">OVERLAY BIANCO</option></select>';
+    const field=document.createElement('div');field.className='field';field.innerHTML='<label>Sfondo loghi</label><select id="logoBg" style="width:100%;border:2px solid #050505;padding:7px 8px;background:#fff;font:800 13px Helvetica"><option value="none">NESSUNO</option><option value="white">BIANCO</option></select>';
     logoTitle.insertAdjacentElement('afterend',field);
   }
 
