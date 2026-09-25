@@ -45,8 +45,7 @@
   }
   function drawCredits(){
     if(!$('brandOn').checked)return;
-    ctx.save();ctx.textBaseline='bottom';ctx.textAlign='left';ctx.font='12px Helvetica,Arial,sans-serif';ctx.fillStyle='#ffffff';
-    ctx.fillText($('copyright').value||'',55,H-26);
+    ctx.save();
     const labels=['ASAP','CUSTODIA','BOLOGNA'];
     state.footerLogos.forEach((image,i)=>{
       const cx=740+i*135,cy=1256,size=112;
@@ -57,6 +56,11 @@
       }else{ctx.fillStyle=$('logoBg').value==='white'?'#050505':'#ffffff';ctx.font='900 14px Helvetica,Arial,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(labels[i],cx,cy)}
     });
     ctx.restore();
+  }
+  function drawCopyright(){
+    if(!$('brandOn').checked)return;
+    ctx.save();ctx.textBaseline='bottom';ctx.textAlign='left';ctx.font='12px Helvetica,Arial,sans-serif';ctx.fillStyle='#ffffff';
+    ctx.fillText($('copyright').value||'',55,$('tickerOn').checked?H-72:H-26);ctx.restore();
   }
   function eventHeader(now,forceFinal){
     const title=String($('eventTitle').value||''),date=String($('eventDate').value||'').trim(),titleColor=$('eventTitleColor').value||'#ffffff';
@@ -111,6 +115,7 @@
     ctx.fillStyle=state.bg;ctx.fillRect(0,0,W,H);if(state.image)coverImage(state.image,state.playing?1+Math.min(elapsed,DURATION)/DURATION*.025:1);
     ctx.fillStyle=`rgba(0,0,0,${Number($('overlay').value)})`;ctx.fillRect(0,0,W,H);drawBrand();eventHeader(now,forceFinal);drawCredits();state.popups.forEach((item,index)=>popup(item,forceFinal?1:Math.max(0,Math.min(1,(elapsed-550-index*250)/500))));
     if($('tickerOn').checked){ticker($('tickerTop').value,0,1,now);ticker($('tickerBottom').value,H-58,-1,now)}
+    drawCopyright();
     if(state.playing&&elapsed>=DURATION){state.playing=false;$('play').textContent='▶ PLAY SEQUENZA';$('status').textContent='✓ FINE 5 SEC'}
   }
   function loop(now){renderFrame(now);requestAnimationFrame(loop)}
