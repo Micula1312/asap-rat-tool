@@ -48,7 +48,7 @@ const state = {
   title: "EX CASA DEL CUSTODE",
   year: "MONTHLY AGENDA 2026 / 2027",
   info: "",
-  footer: "ASAP RAT ENGINE",
+  footer: "© ASAP RAT ENGINE",
   agendaTitle: "OTTOBRE 2026",
   agendaSubtitle: "Recap degli eventi del mese in Casetta",
   scales: { popup: 1, label: 2, rat: 1 },

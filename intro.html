@@ -255,6 +255,9 @@
         <div class="field">
           <label>Footer</label><input id="footer" value="@excasadelcustode" />
         </div>
+        <div class="field">
+          <label>Copyright</label><input id="copyright" value="© ASAP RAT ENGINE" />
+        </div>
       </div>
       <div class="section">
         <div class="title">DURATA / POPUP</div>
@@ -620,6 +623,12 @@
           ticker($("tickerTop").value, 0, 1, now);
           ticker($("tickerBottom").value, H - 58, -1, now);
         }
+        x.save();
+        x.textAlign = "left"; x.textBaseline = "bottom";
+        x.font = "12px Helvetica, Arial, sans-serif";
+        x.fillStyle = BG.indexOf(s.bg) > 4 ? "#050505" : "#ffffff";
+        x.fillText($("copyright").value, 55, $("tickerOn").checked ? H - 72 : H - 26);
+        x.restore();
         if (s.playing && elapsed >= dur) {
           s.playing = false;
           $("preview").textContent = "▶ PLAY SEQUENZA";
@@ -713,7 +722,7 @@
       }
       function post02Package() {
         const values = {};
-        ["headline", "year", "info", "caption", "footer", "p1", "p2", "p3", "tickerTop", "tickerBottom", "tickerSpeed", "scale", "speed"].forEach((id) => values[id] = $(id).value);
+        ["headline", "year", "info", "caption", "footer", "copyright", "p1", "p2", "p3", "tickerTop", "tickerBottom", "tickerSpeed", "scale", "speed"].forEach((id) => values[id] = $(id).value);
         return {
           type: "ex-casa-post02-package",
           version: 1,
