@@ -529,13 +529,30 @@
       }
       function imgFit(i, cx, cy, m) {
         let r = Math.min(m / i.width, m / i.height);
+        if ($("logoBg")?.value === "white") {
+          x.save(); x.fillStyle = "#fff"; x.beginPath();
+          x.arc(cx, cy, m / 2 + 8, 0, Math.PI * 2); x.fill(); x.restore();
+        }
         x.drawImage(
-          i,
+          $("logoBg")?.value === "overlay-white" ? whiteLogoImage(i) : i,
           cx - (i.width * r) / 2,
           cy - (i.height * r) / 2,
           i.width * r,
           i.height * r,
         );
+      }
+      const whiteLogoCache = new WeakMap();
+      function whiteLogoImage(image) {
+        if (whiteLogoCache.has(image)) return whiteLogoCache.get(image);
+        const surface = document.createElement("canvas");
+        surface.width = image.width; surface.height = image.height;
+        const context = surface.getContext("2d");
+        context.drawImage(image, 0, 0);
+        context.globalCompositeOperation = "source-in";
+        context.fillStyle = "#fff";
+        context.fillRect(0, 0, surface.width, surface.height);
+        whiteLogoCache.set(image, surface);
+        return surface;
       }
       function durationMs() {
         return $("popupOn").checked ? 10000 : 5000;
@@ -707,6 +724,7 @@
             popupOn: $("popupOn").checked,
             tickerOn: $("tickerOn").checked,
             identityOn: Boolean($("logosOn")?.checked),
+            logoBg: $("logoBg")?.value || "none",
             captionAnimation: s.captionAnimation || "static",
             captionColor: s.captionColor || "#050505",
             captionSize: s.captionSize || 44,
@@ -749,6 +767,7 @@
             Object.entries(values).forEach(([id, value]) => { if ($(id)) $(id).value = String(value); });
             $("popupOn").checked = Boolean(d.popupOn);
             $("tickerOn").checked = d.tickerOn !== false;
+            if ($("logoBg")) $("logoBg").value = ["none", "white", "overlay-white"].includes(d.logoBg) ? d.logoBg : "none";
             s.captionAnimation = d.captionAnimation || "static";
             s.captionColor = d.captionColor || "#050505";
             s.captionSize = Number(d.captionSize) || 44;

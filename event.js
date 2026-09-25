@@ -27,7 +27,15 @@
   function drawLogoImage(image,x,y,maxW,maxH){
     const scale=Math.min(maxW/image.width,maxH/image.height);
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-    ctx.drawImage(image,x,y,image.width*scale,image.height*scale);
+    ctx.drawImage($('logoBg').value==='overlay-white'?whiteLogoImage(image):image,x,y,image.width*scale,image.height*scale);
+  }
+  const whiteLogoCache=new WeakMap();
+  function whiteLogoImage(image){
+    if(whiteLogoCache.has(image))return whiteLogoCache.get(image);
+    const surface=document.createElement('canvas');surface.width=image.width;surface.height=image.height;
+    const context=surface.getContext('2d');context.drawImage(image,0,0);
+    context.globalCompositeOperation='source-in';context.fillStyle='#fff';context.fillRect(0,0,surface.width,surface.height);
+    whiteLogoCache.set(image,surface);return surface;
   }
   function drawBrand(){
     if(!$('brandOn').checked)return;
@@ -52,7 +60,7 @@
       if($('logoBg').value==='white'){ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(cx,cy,size/2,0,Math.PI*2);ctx.fill()}
       if(image){
         const max=$('logoBg').value==='white'?size*.72:size*.92,scale=Math.min(max/image.width,max/image.height);
-        ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(image,cx-image.width*scale/2,cy-image.height*scale/2,image.width*scale,image.height*scale);
+        ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage($('logoBg').value==='overlay-white'?whiteLogoImage(image):image,cx-image.width*scale/2,cy-image.height*scale/2,image.width*scale,image.height*scale);
       }else{ctx.fillStyle=$('logoBg').value==='white'?'#050505':'#ffffff';ctx.font='900 14px Helvetica,Arial,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(labels[i],cx,cy)}
     });
     ctx.restore();
@@ -131,7 +139,7 @@
       const image=new Image();image.onload=()=>{assign(image);resolve()};image.onerror=reject;image.src=src;
     });
   }
-  function loadJSONFile(file){if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{const pkg=JSON.parse(reader.result);if(pkg?.type!=='ex-casa-post03-package'||!pkg.data)throw new Error('JSON POST 03 non riconosciuto');const d=pkg.data;state.bg=BG.includes(d.bg)?d.bg:state.bg;$('eventTitle').value=String(d.eventTitle??'');$('eventDate').value=String(d.eventDate??'');$('eventTitleColor').value=d.eventTitleColor||'#ffffff';$('eventTitleSize').value=String(Math.max(24,Math.min(120,Number(d.eventTitleSize)||56)));$('eventTitleSizeValue').textContent=$('eventTitleSize').value;$('eventTitleAnimation').value=['float','static','wave','shake','pulse','type','slide','spin'].includes(d.eventTitleAnimation)?d.eventTitleAnimation:'float';$('brandOn').checked=d.brandOn!==false;$('logoBg').value=d.logoBg==='white'?'white':'none';$('copyright').value=String(d.copyright??'ASAP RAT ENGINE');$('overlay').value=String(d.overlay??'0.2');$('tickerOn').checked=d.tickerOn!==false;$('tickerTop').value=String(d.tickerTop??'');$('tickerBottom').value=String(d.tickerBottom??'');$('tickerSpeed').value=String(d.tickerSpeed??'85');if(Array.isArray(d.popups)&&d.popups.length)state.popups=d.popups.map(item=>({...item}));await loadBackgroundSource(pkg.assets?.background||null);await Promise.all(Object.keys(state.logoSources).map(id=>loadLogoSource(id,pkg.assets?.logos?.[id]||null)));renderPopupEditors();$('backgroundImage').value='';Object.keys(state.logoSources).forEach(id=>$(id).value='');$('status').textContent='✓ JSON CARICATO'}catch(error){console.error(error);$('status').textContent='ERRORE JSON';alert(error.message||'File JSON non valido')}};reader.readAsText(file)}
+  function loadJSONFile(file){if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{const pkg=JSON.parse(reader.result);if(pkg?.type!=='ex-casa-post03-package'||!pkg.data)throw new Error('JSON POST 03 non riconosciuto');const d=pkg.data;state.bg=BG.includes(d.bg)?d.bg:state.bg;$('eventTitle').value=String(d.eventTitle??'');$('eventDate').value=String(d.eventDate??'');$('eventTitleColor').value=d.eventTitleColor||'#ffffff';$('eventTitleSize').value=String(Math.max(24,Math.min(120,Number(d.eventTitleSize)||56)));$('eventTitleSizeValue').textContent=$('eventTitleSize').value;$('eventTitleAnimation').value=['float','static','wave','shake','pulse','type','slide','spin'].includes(d.eventTitleAnimation)?d.eventTitleAnimation:'float';$('brandOn').checked=d.brandOn!==false;$('logoBg').value=['none','white','overlay-white'].includes(d.logoBg)?d.logoBg:'none';$('copyright').value=String(d.copyright??'ASAP RAT ENGINE');$('overlay').value=String(d.overlay??'0.2');$('tickerOn').checked=d.tickerOn!==false;$('tickerTop').value=String(d.tickerTop??'');$('tickerBottom').value=String(d.tickerBottom??'');$('tickerSpeed').value=String(d.tickerSpeed??'85');if(Array.isArray(d.popups)&&d.popups.length)state.popups=d.popups.map(item=>({...item}));await loadBackgroundSource(pkg.assets?.background||null);await Promise.all(Object.keys(state.logoSources).map(id=>loadLogoSource(id,pkg.assets?.logos?.[id]||null)));renderPopupEditors();$('backgroundImage').value='';Object.keys(state.logoSources).forEach(id=>$(id).value='');$('status').textContent='✓ JSON CARICATO'}catch(error){console.error(error);$('status').textContent='ERRORE JSON';alert(error.message||'File JSON non valido')}};reader.readAsText(file)}
   function savePNG(story){const out=outputCanvas(story);out.toBlob(async blob=>{await saveBlob(blob,`ex-casa-post03-${story?'story-9x16':'post-4x5'}-${Date.now()}.png`);$('status').textContent=`✓ PNG ${story?'STORY 2160×3840':'POST 2160×2700'} · ${(blob.size/1024/1024).toFixed(1)} MB`;out.width=out.height=1},'image/png')}
   function popupField(label,key,item,multiline=false){
     const field=document.createElement('div'),caption=document.createElement('label'),input=document.createElement(multiline?'textarea':'input');

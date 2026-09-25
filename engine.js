@@ -925,7 +925,8 @@ function drawArciMark() {
     drawingContext.imageSmoothingEnabled = true;
     drawingContext.imageSmoothingQuality = "high";
     imageMode(CENTER);
-    image(img, 0, 0, img.width * s, img.height * s);
+    if (state.logoBackground === "overlay-white") drawingContext.drawImage(whiteLogoImage(img), -img.width * s / 2, -img.height * s / 2, img.width * s, img.height * s);
+    else image(img, 0, 0, img.width * s, img.height * s);
     imageMode(CORNER);
     drawingContext.restore();
   } else {
@@ -1239,6 +1240,7 @@ try {
     if (Array.isArray(d.logoLabels)) state.logoLabels = [...d.logoLabels];
     if (Array.isArray(d.logoIcons)) state.logoIcons = [...d.logoIcons];
     if (typeof d.finalCaption === "string") state.finalCaption = d.finalCaption;
+    if (["none", "white", "overlay-white"].includes(d.logoBackground)) state.logoBackground = d.logoBackground;
     _pendingPackageAssets = pkg.assets || null;
     localStorage.removeItem(PACKAGE_RESTORE_KEY);
     try {
@@ -1597,6 +1599,7 @@ function makePackage() {
       logoLabels: [...state.logoLabels],
       logoIcons: [...(state.logoIcons || [])],
       finalCaption: state.finalCaption || "2026 edition",
+      logoBackground: state.logoBackground,
     },
     assets: {
       logos: (state.logos || []).map(p5ImageToDataURL),
@@ -1881,7 +1884,7 @@ function drawBlockedDots() {
   pop();
 }
 
-state.logoBackground = "none";
+state.logoBackground = state.logoBackground || "none";
 
 state.showBrandBlock = true;
 
@@ -1906,7 +1909,7 @@ function installLogoStyleControls() {
   label.textContent = "SFONDO LOGHI";
   const select = document.createElement("select");
   select.innerHTML =
-    '<option value="none">NESSUNO</option><option value="white">BIANCO</option>';
+    '<option value="none">NESSUNO</option><option value="white">SFONDO BIANCO</option><option value="overlay-white">OVERLAY BIANCO</option>';
   select.value = state.logoBackground;
   select.onchange = () => (state.logoBackground = select.value);
   field.append(label, select);
@@ -1947,7 +1950,8 @@ function drawLogoSlot(i, logoAmount, iconScale) {
       drawingContext.imageSmoothingEnabled = true;
       drawingContext.imageSmoothingQuality = "high";
       imageMode(CENTER);
-      image(img, 0, 0, img.width * s, img.height * s);
+      if (state.logoBackground === "overlay-white") drawingContext.drawImage(whiteLogoImage(img), -img.width * s / 2, -img.height * s / 2, img.width * s, img.height * s);
+      else image(img, 0, 0, img.width * s, img.height * s);
       imageMode(CORNER);
       drawingContext.restore();
     } else {
@@ -1962,6 +1966,20 @@ function drawLogoSlot(i, logoAmount, iconScale) {
     pop();
   }
   pop();
+}
+
+const whiteLogoCache = new WeakMap();
+function whiteLogoImage(img) {
+  if (whiteLogoCache.has(img)) return whiteLogoCache.get(img);
+  const surface = document.createElement("canvas");
+  surface.width = img.width; surface.height = img.height;
+  const context = surface.getContext("2d");
+  context.drawImage(img.canvas || img.elt || img, 0, 0);
+  context.globalCompositeOperation = "source-in";
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, surface.width, surface.height);
+  whiteLogoCache.set(img, surface);
+  return surface;
 }
 
 function installLogoUploadControls() {
