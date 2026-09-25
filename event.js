@@ -24,16 +24,34 @@
     const lines=wrappedLines(text,maxWidth);
     lines.slice(0,maxLines).forEach((line,i)=>ctx.fillText(i===maxLines-1&&lines.length>maxLines?line.replace(/[.…]*$/,'')+'…':line,x,y+i*lineHeight));
   }
-  function eventHeader(){
-    const title=String($('eventTitle').value||'').trim().toLocaleLowerCase('it-IT'),date=String($('eventDate').value||'').trim(),titleColor=$('eventTitleColor').value||'#ffffff',x=55,y=82,maxWidth=W-110,lineHeight=52;
-    ctx.save();ctx.textAlign='left';ctx.textBaseline='top';ctx.font='italic 900 48px "Times New Roman",Georgia,serif';
+  function eventHeader(now,forceFinal){
+    const title=String($('eventTitle').value||''),date=String($('eventDate').value||'').trim(),titleColor=$('eventTitleColor').value||'#ffffff';
+    const size=Number($('eventTitleSize').value)||48,mode=$('eventTitleAnimation').value,local=state.playing&&!forceFinal?Math.max(0,now-state.started):now;
+    const x=55,y=82,maxWidth=W-110,lineHeight=Math.round(size*1.09);
+    ctx.save();ctx.textAlign='left';ctx.textBaseline='top';ctx.font=`italic ${size}px "Times New Roman",Georgia,serif`;
     const titleLines=wrappedLines(title,maxWidth).slice(0,3);
-    titleLines.forEach((line,index)=>{const lineY=y+index*lineHeight;ctx.fillStyle='#ff61b6';ctx.fillText(line,x+6,lineY+6);ctx.strokeStyle='#050505';ctx.lineWidth=5;ctx.lineJoin='round';ctx.strokeText(line,x,lineY);ctx.fillStyle=titleColor;ctx.fillText(line,x,lineY)});
+    const ease=t=>1-Math.pow(1-Math.max(0,Math.min(1,t)),3);
+    let dx=0,dy=0,rotation=0,scale=1;
+    if(mode==='float')dy=Math.sin(local/520)*12;
+    else if(mode==='shake'){dx=Math.sin(local*.095)*7;dy=Math.sin(local*.137)*4;rotation=Math.sin(local*.081)*.018}
+    else if(mode==='pulse')scale=1+Math.sin(local/300)*.075;
+    else if(mode==='slide'&&state.playing&&!forceFinal)dx=(-W-110)*(1-ease(local/850));
+    else if(mode==='spin')rotation=Math.sin(local/620)*.13;
+    ctx.translate(x+dx,y+dy);ctx.rotate(rotation);ctx.scale(scale,scale);ctx.fillStyle=titleColor;
+    const allText=titleLines.join('\n');let visible=state.playing&&!forceFinal&&mode==='type'?Math.floor(local/75):allText.length;
+    titleLines.forEach((line,index)=>{
+      const shown=[...line].slice(0,Math.max(0,visible)).join('');visible-=line.length+1;
+      if(mode==='wave'){
+        let charX=0;[...shown].forEach((char,i)=>{ctx.fillText(char,charX,index*lineHeight+Math.sin(local/230+i*.7)*13);charX+=ctx.measureText(char).width});
+      }else ctx.fillText(shown,0,index*lineHeight);
+    });
+    ctx.restore();
     if(date){
+      ctx.save();
       ctx.font='900 18px Helvetica,Arial,sans-serif';const pillW=Math.max(86,ctx.measureText(date).width+34),pillH=38,pillX=x,pillY=y+Math.max(1,titleLines.length)*lineHeight+14;
       ctx.fillStyle='#dfff00';ctx.strokeStyle='#050505';ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(pillX,pillY,pillW,pillH,pillH/2);ctx.fill();ctx.stroke();ctx.fillStyle='#050505';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(date,pillX+pillW/2,pillY+pillH/2+1);
+      ctx.restore();
     }
-    ctx.restore();
   }
   function popupMetrics(item){
     const w=POP_W,partnerText=String(item.partners||'').trim();ctx.save();ctx.font='900 40px Helvetica,Arial,sans-serif';const titleLines=wrappedLines(item.title,w-64).length;ctx.font='21px Helvetica,Arial,sans-serif';const descriptionLines=wrappedLines(item.description,w-64).length;ctx.font='900 15px Helvetica,Arial,sans-serif';const partnerLines=partnerText?wrappedLines(partnerText,w-64).length:0;ctx.restore();
@@ -57,17 +75,17 @@
   function renderFrame(now,forceFinal=false){
     const elapsed=state.playing?now-state.started:DURATION;
     ctx.fillStyle=state.bg;ctx.fillRect(0,0,W,H);if(state.image)coverImage(state.image,state.playing?1+Math.min(elapsed,DURATION)/DURATION*.025:1);
-    ctx.fillStyle=`rgba(0,0,0,${Number($('overlay').value)})`;ctx.fillRect(0,0,W,H);eventHeader();state.popups.forEach((item,index)=>popup(item,forceFinal?1:Math.max(0,Math.min(1,(elapsed-550-index*250)/500))));
+    ctx.fillStyle=`rgba(0,0,0,${Number($('overlay').value)})`;ctx.fillRect(0,0,W,H);eventHeader(now,forceFinal);state.popups.forEach((item,index)=>popup(item,forceFinal?1:Math.max(0,Math.min(1,(elapsed-550-index*250)/500))));
     if($('tickerOn').checked){ticker($('tickerTop').value,0,1,now);ticker($('tickerBottom').value,H-58,-1,now)}
     if(state.playing&&elapsed>=DURATION){state.playing=false;$('play').textContent='▶ PLAY SEQUENZA';$('status').textContent='✓ FINE 5 SEC'}
   }
   function loop(now){renderFrame(now);requestAnimationFrame(loop)}
   function outputCanvas(story=false){renderFrame(performance.now(),true);const out=document.createElement('canvas');out.width=2160;out.height=story?3840:2700;const ox=out.getContext('2d');ox.imageSmoothingEnabled=true;ox.imageSmoothingQuality='high';ox.fillStyle=state.bg;ox.fillRect(0,0,out.width,out.height);ox.drawImage(canvas,0,story?570:0,2160,2700);return out}
   async function saveBlob(blob,name){if(state.dir){const file=await state.dir.getFileHandle(name,{create:true}),writer=await file.createWritable();await writer.write(blob);await writer.close();return}const a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1800)}
-  function eventPackage(){return{type:'ex-casa-post03-package',version:1,savedAt:new Date().toISOString(),data:{bg:state.bg,eventTitle:$('eventTitle').value,eventDate:$('eventDate').value,eventTitleColor:$('eventTitleColor').value,overlay:$('overlay').value,tickerOn:$('tickerOn').checked,tickerTop:$('tickerTop').value,tickerBottom:$('tickerBottom').value,tickerSpeed:$('tickerSpeed').value,popups:state.popups.map(item=>({...item}))},assets:{background:state.imageDataURL}}}
+  function eventPackage(){return{type:'ex-casa-post03-package',version:1,savedAt:new Date().toISOString(),data:{bg:state.bg,eventTitle:$('eventTitle').value,eventDate:$('eventDate').value,eventTitleColor:$('eventTitleColor').value,eventTitleSize:$('eventTitleSize').value,eventTitleAnimation:$('eventTitleAnimation').value,overlay:$('overlay').value,tickerOn:$('tickerOn').checked,tickerTop:$('tickerTop').value,tickerBottom:$('tickerBottom').value,tickerSpeed:$('tickerSpeed').value,popups:state.popups.map(item=>({...item}))},assets:{background:state.imageDataURL}}}
   async function saveJSON(){const blob=new Blob([JSON.stringify(eventPackage(),null,2)],{type:'application/json'});await saveBlob(blob,`ex-casa-post03-event-${Date.now()}.json`);$('status').textContent='✓ JSON SALVATO'}
   function loadBackgroundSource(src){return new Promise((resolve,reject)=>{if(!src){state.image=null;state.imageDataURL=null;resolve();return}const image=new Image();image.onload=()=>{state.image=image;state.imageDataURL=src;resolve()};image.onerror=reject;image.src=src})}
-  function loadJSONFile(file){if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{const pkg=JSON.parse(reader.result);if(pkg?.type!=='ex-casa-post03-package'||!pkg.data)throw new Error('JSON POST 03 non riconosciuto');const d=pkg.data;state.bg=BG.includes(d.bg)?d.bg:state.bg;$('eventTitle').value=String(d.eventTitle??'');$('eventDate').value=String(d.eventDate??'');$('eventTitleColor').value=d.eventTitleColor||'#ffffff';$('overlay').value=String(d.overlay??'0.2');$('tickerOn').checked=d.tickerOn!==false;$('tickerTop').value=String(d.tickerTop??'');$('tickerBottom').value=String(d.tickerBottom??'');$('tickerSpeed').value=String(d.tickerSpeed??'85');if(Array.isArray(d.popups)&&d.popups.length)state.popups=d.popups.map(item=>({...item}));await loadBackgroundSource(pkg.assets?.background||null);renderPopupEditors();$('backgroundImage').value='';$('status').textContent='✓ JSON CARICATO'}catch(error){console.error(error);$('status').textContent='ERRORE JSON';alert(error.message||'File JSON non valido')}};reader.readAsText(file)}
+  function loadJSONFile(file){if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{const pkg=JSON.parse(reader.result);if(pkg?.type!=='ex-casa-post03-package'||!pkg.data)throw new Error('JSON POST 03 non riconosciuto');const d=pkg.data;state.bg=BG.includes(d.bg)?d.bg:state.bg;$('eventTitle').value=String(d.eventTitle??'');$('eventDate').value=String(d.eventDate??'');$('eventTitleColor').value=d.eventTitleColor||'#ffffff';$('eventTitleSize').value=String(Math.max(24,Math.min(120,Number(d.eventTitleSize)||48)));$('eventTitleSizeValue').textContent=$('eventTitleSize').value;$('eventTitleAnimation').value=['float','static','wave','shake','pulse','type','slide','spin'].includes(d.eventTitleAnimation)?d.eventTitleAnimation:'float';$('overlay').value=String(d.overlay??'0.2');$('tickerOn').checked=d.tickerOn!==false;$('tickerTop').value=String(d.tickerTop??'');$('tickerBottom').value=String(d.tickerBottom??'');$('tickerSpeed').value=String(d.tickerSpeed??'85');if(Array.isArray(d.popups)&&d.popups.length)state.popups=d.popups.map(item=>({...item}));await loadBackgroundSource(pkg.assets?.background||null);renderPopupEditors();$('backgroundImage').value='';$('status').textContent='✓ JSON CARICATO'}catch(error){console.error(error);$('status').textContent='ERRORE JSON';alert(error.message||'File JSON non valido')}};reader.readAsText(file)}
   function savePNG(story){const out=outputCanvas(story);out.toBlob(async blob=>{await saveBlob(blob,`ex-casa-post03-${story?'story-9x16':'post-4x5'}-${Date.now()}.png`);$('status').textContent=`✓ PNG ${story?'STORY 2160×3840':'POST 2160×2700'} · ${(blob.size/1024/1024).toFixed(1)} MB`;out.width=out.height=1},'image/png')}
   function popupField(label,key,item,multiline=false){
     const field=document.createElement('div'),caption=document.createElement('label'),input=document.createElement(multiline?'textarea':'input');
@@ -93,6 +111,7 @@
   $('backgroundImage').onchange=e=>{const file=e.target.files&&e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{await loadBackgroundSource(reader.result);$('status').textContent='✓ BACKGROUND CARICATO'}catch(error){console.error(error);$('status').textContent='ERRORE BACKGROUND'}};reader.readAsDataURL(file)};
   $('removeImage').onclick=()=>{state.image=null;state.imageDataURL=null;$('backgroundImage').value='';$('status').textContent='BACKGROUND RIMOSSO'};
   BG.forEach(color=>{const button=document.createElement('button');button.className='swatch';button.style.background=color;button.title=color;button.onclick=()=>state.bg=color;$('palette').appendChild(button)});
+  $('eventTitleSize').oninput=()=>{$('eventTitleSizeValue').textContent=$('eventTitleSize').value};
   renderPopupEditors();
   requestAnimationFrame(loop);
 })();
