@@ -1,7 +1,7 @@
 (function(){
   const W=1080,H=1350,DURATION=5000,POP_W=540,POP_H=300,POP_GRAB=64,BG=['#08090B','#151619','#242529','#3A3B3F','#5A5B5E','#858588','#C5C3C4'];
   const canvas=document.getElementById('eventCanvas'),ctx=canvas.getContext('2d'),$=id=>document.getElementById(id);
-  const state={bg:BG[1],image:null,imageDataURL:null,playing:false,started:0,dir:null,recorder:null,drag:null,popups:[
+  const state={bg:BG[1],image:null,imageDataURL:null,brandLogo:null,arciLogo:null,footerLogos:[null,null,null],logoSources:{brandLogo:null,arciLogo:null,footerLogo0:null,footerLogo1:null,footerLogo2:null},playing:false,started:0,dir:null,recorder:null,drag:null,popups:[
     {date:'ORE 18:00',title:'ATTIVITÀ 01',description:'Descrizione e informazioni specifiche della prima attività.',partners:'',x:70,y:275},
     {date:'ORE 21:00',title:'ATTIVITÀ 02',description:'Descrizione e informazioni specifiche della seconda attività.',partners:'',x:470,y:560},
     {date:'ORE 23:00',title:'ATTIVITÀ 03',description:'Descrizione e informazioni specifiche della terza attività.',partners:'',x:150,y:845}
@@ -24,10 +24,44 @@
     const lines=wrappedLines(text,maxWidth);
     lines.slice(0,maxLines).forEach((line,i)=>ctx.fillText(i===maxLines-1&&lines.length>maxLines?line.replace(/[.…]*$/,'')+'…':line,x,y+i*lineHeight));
   }
+  function drawLogoImage(image,x,y,maxW,maxH){
+    const scale=Math.min(maxW/image.width,maxH/image.height);
+    ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    ctx.drawImage(image,x,y,image.width*scale,image.height*scale);
+  }
+  function drawBrand(){
+    if(!$('brandOn').checked)return;
+    ctx.save();
+    if(state.brandLogo)drawLogoImage(state.brandLogo,55,76,610,64);
+    else{
+      ctx.textAlign='left';ctx.textBaseline='top';ctx.font='900 42px Helvetica,Arial,sans-serif';
+      ctx.fillStyle='#ff61b6';ctx.fillText('EX CASA DEL CUSTODE',61,85);
+      ctx.lineJoin='round';ctx.strokeStyle='#050505';ctx.lineWidth=5;ctx.strokeText('EX CASA DEL CUSTODE',55,79);
+      ctx.fillStyle='#ffffff';ctx.fillText('EX CASA DEL CUSTODE',55,79);
+    }
+    if(state.arciLogo)drawLogoImage(state.arciLogo,930,71,96,96);
+    else{ctx.textAlign='center';ctx.textBaseline='middle';ctx.font='76px Helvetica,Arial,sans-serif';ctx.fillStyle='#ffffff';ctx.fillText('★',980,118)}
+    ctx.restore();
+  }
+  function drawCredits(){
+    if(!$('brandOn').checked)return;
+    ctx.save();ctx.textBaseline='bottom';ctx.textAlign='left';ctx.font='12px Helvetica,Arial,sans-serif';ctx.fillStyle='#ffffff';
+    ctx.fillText($('copyright').value||'',55,H-26);
+    const labels=['ASAP','CUSTODIA','BOLOGNA'];
+    state.footerLogos.forEach((image,i)=>{
+      const cx=740+i*135,cy=1256,size=112;
+      if($('logoBg').value==='white'){ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(cx,cy,size/2,0,Math.PI*2);ctx.fill()}
+      if(image){
+        const max=$('logoBg').value==='white'?size*.72:size*.92,scale=Math.min(max/image.width,max/image.height);
+        ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(image,cx-image.width*scale/2,cy-image.height*scale/2,image.width*scale,image.height*scale);
+      }else{ctx.fillStyle=$('logoBg').value==='white'?'#050505':'#ffffff';ctx.font='900 14px Helvetica,Arial,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(labels[i],cx,cy)}
+    });
+    ctx.restore();
+  }
   function eventHeader(now,forceFinal){
     const title=String($('eventTitle').value||''),date=String($('eventDate').value||'').trim(),titleColor=$('eventTitleColor').value||'#ffffff';
-    const size=Number($('eventTitleSize').value)||48,mode=$('eventTitleAnimation').value,local=state.playing&&!forceFinal?Math.max(0,now-state.started):now;
-    const x=55,y=82,maxWidth=W-110,lineHeight=Math.round(size*1.09);
+    const size=Number($('eventTitleSize').value)||56,mode=$('eventTitleAnimation').value,local=state.playing&&!forceFinal?Math.max(0,now-state.started):now;
+    const x=55,y=$('brandOn').checked?147:82,maxWidth=W-110,lineHeight=Math.round(size*1.09);
     ctx.save();ctx.textAlign='left';ctx.textBaseline='top';ctx.font=`italic ${size}px "Times New Roman",Georgia,serif`;
     const titleLines=wrappedLines(title,maxWidth).slice(0,3);
     const ease=t=>1-Math.pow(1-Math.max(0,Math.min(1,t)),3);
@@ -48,7 +82,7 @@
     ctx.restore();
     if(date){
       ctx.save();
-      ctx.font='900 18px Helvetica,Arial,sans-serif';const pillW=Math.max(86,ctx.measureText(date).width+34),pillH=38,pillX=x,pillY=y+Math.max(1,titleLines.length)*lineHeight+14;
+      ctx.font='900 22px Helvetica,Arial,sans-serif';const pillW=Math.max(98,ctx.measureText(date).width+38),pillH=44,pillX=x,pillY=y+Math.max(1,titleLines.length)*lineHeight+14;
       ctx.fillStyle='#dfff00';ctx.strokeStyle='#050505';ctx.lineWidth=3;ctx.beginPath();ctx.roundRect(pillX,pillY,pillW,pillH,pillH/2);ctx.fill();ctx.stroke();ctx.fillStyle='#050505';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(date,pillX+pillW/2,pillY+pillH/2+1);
       ctx.restore();
     }
@@ -75,17 +109,24 @@
   function renderFrame(now,forceFinal=false){
     const elapsed=state.playing?now-state.started:DURATION;
     ctx.fillStyle=state.bg;ctx.fillRect(0,0,W,H);if(state.image)coverImage(state.image,state.playing?1+Math.min(elapsed,DURATION)/DURATION*.025:1);
-    ctx.fillStyle=`rgba(0,0,0,${Number($('overlay').value)})`;ctx.fillRect(0,0,W,H);eventHeader(now,forceFinal);state.popups.forEach((item,index)=>popup(item,forceFinal?1:Math.max(0,Math.min(1,(elapsed-550-index*250)/500))));
+    ctx.fillStyle=`rgba(0,0,0,${Number($('overlay').value)})`;ctx.fillRect(0,0,W,H);drawBrand();eventHeader(now,forceFinal);drawCredits();state.popups.forEach((item,index)=>popup(item,forceFinal?1:Math.max(0,Math.min(1,(elapsed-550-index*250)/500))));
     if($('tickerOn').checked){ticker($('tickerTop').value,0,1,now);ticker($('tickerBottom').value,H-58,-1,now)}
     if(state.playing&&elapsed>=DURATION){state.playing=false;$('play').textContent='▶ PLAY SEQUENZA';$('status').textContent='✓ FINE 5 SEC'}
   }
   function loop(now){renderFrame(now);requestAnimationFrame(loop)}
   function outputCanvas(story=false){renderFrame(performance.now(),true);const out=document.createElement('canvas');out.width=2160;out.height=story?3840:2700;const ox=out.getContext('2d');ox.imageSmoothingEnabled=true;ox.imageSmoothingQuality='high';ox.fillStyle=state.bg;ox.fillRect(0,0,out.width,out.height);ox.drawImage(canvas,0,story?570:0,2160,2700);return out}
   async function saveBlob(blob,name){if(state.dir){const file=await state.dir.getFileHandle(name,{create:true}),writer=await file.createWritable();await writer.write(blob);await writer.close();return}const a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1800)}
-  function eventPackage(){return{type:'ex-casa-post03-package',version:1,savedAt:new Date().toISOString(),data:{bg:state.bg,eventTitle:$('eventTitle').value,eventDate:$('eventDate').value,eventTitleColor:$('eventTitleColor').value,eventTitleSize:$('eventTitleSize').value,eventTitleAnimation:$('eventTitleAnimation').value,overlay:$('overlay').value,tickerOn:$('tickerOn').checked,tickerTop:$('tickerTop').value,tickerBottom:$('tickerBottom').value,tickerSpeed:$('tickerSpeed').value,popups:state.popups.map(item=>({...item}))},assets:{background:state.imageDataURL}}}
+  function eventPackage(){return{type:'ex-casa-post03-package',version:1,savedAt:new Date().toISOString(),data:{bg:state.bg,eventTitle:$('eventTitle').value,eventDate:$('eventDate').value,eventTitleColor:$('eventTitleColor').value,eventTitleSize:$('eventTitleSize').value,eventTitleAnimation:$('eventTitleAnimation').value,brandOn:$('brandOn').checked,logoBg:$('logoBg').value,copyright:$('copyright').value,overlay:$('overlay').value,tickerOn:$('tickerOn').checked,tickerTop:$('tickerTop').value,tickerBottom:$('tickerBottom').value,tickerSpeed:$('tickerSpeed').value,popups:state.popups.map(item=>({...item}))},assets:{background:state.imageDataURL,logos:{...state.logoSources}}}}
   async function saveJSON(){const blob=new Blob([JSON.stringify(eventPackage(),null,2)],{type:'application/json'});await saveBlob(blob,`ex-casa-post03-event-${Date.now()}.json`);$('status').textContent='✓ JSON SALVATO'}
   function loadBackgroundSource(src){return new Promise((resolve,reject)=>{if(!src){state.image=null;state.imageDataURL=null;resolve();return}const image=new Image();image.onload=()=>{state.image=image;state.imageDataURL=src;resolve()};image.onerror=reject;image.src=src})}
-  function loadJSONFile(file){if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{const pkg=JSON.parse(reader.result);if(pkg?.type!=='ex-casa-post03-package'||!pkg.data)throw new Error('JSON POST 03 non riconosciuto');const d=pkg.data;state.bg=BG.includes(d.bg)?d.bg:state.bg;$('eventTitle').value=String(d.eventTitle??'');$('eventDate').value=String(d.eventDate??'');$('eventTitleColor').value=d.eventTitleColor||'#ffffff';$('eventTitleSize').value=String(Math.max(24,Math.min(120,Number(d.eventTitleSize)||48)));$('eventTitleSizeValue').textContent=$('eventTitleSize').value;$('eventTitleAnimation').value=['float','static','wave','shake','pulse','type','slide','spin'].includes(d.eventTitleAnimation)?d.eventTitleAnimation:'float';$('overlay').value=String(d.overlay??'0.2');$('tickerOn').checked=d.tickerOn!==false;$('tickerTop').value=String(d.tickerTop??'');$('tickerBottom').value=String(d.tickerBottom??'');$('tickerSpeed').value=String(d.tickerSpeed??'85');if(Array.isArray(d.popups)&&d.popups.length)state.popups=d.popups.map(item=>({...item}));await loadBackgroundSource(pkg.assets?.background||null);renderPopupEditors();$('backgroundImage').value='';$('status').textContent='✓ JSON CARICATO'}catch(error){console.error(error);$('status').textContent='ERRORE JSON';alert(error.message||'File JSON non valido')}};reader.readAsText(file)}
+  function loadLogoSource(id,src){
+    const assign=image=>{state.logoSources[id]=src||null;if(id==='brandLogo')state.brandLogo=image;else if(id==='arciLogo')state.arciLogo=image;else state.footerLogos[Number(id.slice(-1))]=image};
+    return new Promise((resolve,reject)=>{
+      if(!src){assign(null);resolve();return}
+      const image=new Image();image.onload=()=>{assign(image);resolve()};image.onerror=reject;image.src=src;
+    });
+  }
+  function loadJSONFile(file){if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{const pkg=JSON.parse(reader.result);if(pkg?.type!=='ex-casa-post03-package'||!pkg.data)throw new Error('JSON POST 03 non riconosciuto');const d=pkg.data;state.bg=BG.includes(d.bg)?d.bg:state.bg;$('eventTitle').value=String(d.eventTitle??'');$('eventDate').value=String(d.eventDate??'');$('eventTitleColor').value=d.eventTitleColor||'#ffffff';$('eventTitleSize').value=String(Math.max(24,Math.min(120,Number(d.eventTitleSize)||56)));$('eventTitleSizeValue').textContent=$('eventTitleSize').value;$('eventTitleAnimation').value=['float','static','wave','shake','pulse','type','slide','spin'].includes(d.eventTitleAnimation)?d.eventTitleAnimation:'float';$('brandOn').checked=d.brandOn!==false;$('logoBg').value=d.logoBg==='white'?'white':'none';$('copyright').value=String(d.copyright??'ASAP RAT ENGINE');$('overlay').value=String(d.overlay??'0.2');$('tickerOn').checked=d.tickerOn!==false;$('tickerTop').value=String(d.tickerTop??'');$('tickerBottom').value=String(d.tickerBottom??'');$('tickerSpeed').value=String(d.tickerSpeed??'85');if(Array.isArray(d.popups)&&d.popups.length)state.popups=d.popups.map(item=>({...item}));await loadBackgroundSource(pkg.assets?.background||null);await Promise.all(Object.keys(state.logoSources).map(id=>loadLogoSource(id,pkg.assets?.logos?.[id]||null)));renderPopupEditors();$('backgroundImage').value='';Object.keys(state.logoSources).forEach(id=>$(id).value='');$('status').textContent='✓ JSON CARICATO'}catch(error){console.error(error);$('status').textContent='ERRORE JSON';alert(error.message||'File JSON non valido')}};reader.readAsText(file)}
   function savePNG(story){const out=outputCanvas(story);out.toBlob(async blob=>{await saveBlob(blob,`ex-casa-post03-${story?'story-9x16':'post-4x5'}-${Date.now()}.png`);$('status').textContent=`✓ PNG ${story?'STORY 2160×3840':'POST 2160×2700'} · ${(blob.size/1024/1024).toFixed(1)} MB`;out.width=out.height=1},'image/png')}
   function popupField(label,key,item,multiline=false){
     const field=document.createElement('div'),caption=document.createElement('label'),input=document.createElement(multiline?'textarea':'input');
@@ -110,6 +151,13 @@
   $('folder').onclick=async()=>{if(!window.showDirectoryPicker){$('status').textContent='OUTPUT: DOWNLOADS';return}try{state.dir=await showDirectoryPicker({mode:'readwrite'});$('folderName').value=state.dir.name||'CARTELLA SELEZIONATA';$('status').textContent='OUTPUT: '+state.dir.name}catch(error){if(error.name!=='AbortError')console.error(error)}};
   $('backgroundImage').onchange=e=>{const file=e.target.files&&e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{await loadBackgroundSource(reader.result);$('status').textContent='✓ BACKGROUND CARICATO'}catch(error){console.error(error);$('status').textContent='ERRORE BACKGROUND'}};reader.readAsDataURL(file)};
   $('removeImage').onclick=()=>{state.image=null;state.imageDataURL=null;$('backgroundImage').value='';$('status').textContent='BACKGROUND RIMOSSO'};
+  Object.keys(state.logoSources).forEach(id=>{
+    $(id).onchange=event=>{
+      const file=event.target.files&&event.target.files[0];if(!file)return;
+      const reader=new FileReader();reader.onload=async()=>{try{await loadLogoSource(id,reader.result);$('status').textContent='✓ LOGO CARICATO'}catch(error){console.error(error);$('status').textContent='ERRORE LOGO'}};reader.readAsDataURL(file);
+    };
+  });
+  document.querySelectorAll('.clear-logo').forEach(button=>button.onclick=()=>{const id=button.dataset.logo;loadLogoSource(id,null);$(id).value='';$('status').textContent='LOGO RIMOSSO'});
   BG.forEach(color=>{const button=document.createElement('button');button.className='swatch';button.style.background=color;button.title=color;button.onclick=()=>state.bg=color;$('palette').appendChild(button)});
   $('eventTitleSize').oninput=()=>{$('eventTitleSizeValue').textContent=$('eventTitleSize').value};
   renderPopupEditors();
