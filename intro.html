@@ -340,14 +340,17 @@
         <div class="field">
           <label>Logo 1</label
           ><input class="logo" data-i="0" type="file" accept="image/*" />
+          <button class="clear-logo action" data-i="0" type="button">RIMUOVI LOGO</button>
         </div>
         <div class="field">
           <label>Logo 2</label
           ><input class="logo" data-i="1" type="file" accept="image/*" />
+          <button class="clear-logo action" data-i="1" type="button">RIMUOVI LOGO</button>
         </div>
         <div class="field">
           <label>Logo 3</label
           ><input class="logo" data-i="2" type="file" accept="image/*" />
+          <button class="clear-logo action" data-i="2" type="button">RIMUOVI LOGO</button>
         </div>
         <div class="field">
           <label>ARCI</label><input id="arci" type="file" accept="image/*" />
@@ -606,11 +609,6 @@
           const xs = [795, 885, 975];
           for (let i = 0; i < 3; i++) {
             if (s.logos[i]) imgFit(s.logos[i], xs[i], 1250, 55);
-            else {
-              x.font = "38px Arial";
-              x.fillStyle = "#050505";
-              x.fillText("🌟", xs[i], 1250);
-            }
           }
         }
         if (s.arci) imgFit(s.arci, 982, 105, 90);
@@ -689,6 +687,13 @@
           (i) =>
             (i.onchange = () => load(i, (m) => (s.logos[+i.dataset.i] = m))),
         );
+      document.querySelectorAll(".clear-logo").forEach((button) => {
+        button.onclick = () => {
+          const index = Number(button.dataset.i);
+          s.logos[index] = null;
+          document.querySelector(`.logo[data-i="${index}"]`).value = "";
+        };
+      });
       $("arci").onchange = () => load($("arci"), (m) => (s.arci = m));
       $("preview").onclick = () => {
         s.playing = !s.playing;

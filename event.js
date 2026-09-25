@@ -54,14 +54,14 @@
   function drawCredits(){
     if(!$('brandOn').checked)return;
     ctx.save();
-    const labels=['ASAP','CUSTODIA','BOLOGNA'];
     state.footerLogos.forEach((image,i)=>{
+      if(!image)return;
       const cx=740+i*135,cy=1256,size=112;
       if($('logoBg').value==='white'){ctx.fillStyle='#ffffff';ctx.beginPath();ctx.arc(cx,cy,size/2,0,Math.PI*2);ctx.fill()}
       if(image){
         const max=$('logoBg').value==='white'?size*.72:size*.92,scale=Math.min(max/image.width,max/image.height);
         ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage($('logoBg').value==='overlay-white'?whiteLogoImage(image):image,cx-image.width*scale/2,cy-image.height*scale/2,image.width*scale,image.height*scale);
-      }else{ctx.fillStyle=$('logoBg').value==='white'?'#050505':'#ffffff';ctx.font='900 14px Helvetica,Arial,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(labels[i],cx,cy)}
+      }
     });
     ctx.restore();
   }

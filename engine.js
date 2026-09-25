@@ -75,7 +75,7 @@ const state = {
   rats: DEFAULT_RATS.map((r) => ({ ...r })),
   ratStarts: [],
   logos: [null, null, null],
-  logoLabels: ["ASAP", "CUSTODIA", "BOLOGNA"],
+  logoLabels: ["", "", ""],
 };
 
 const sequence = {
@@ -1919,6 +1919,7 @@ function installLogoStyleControls() {
 
 function drawLogoSlot(i, logoAmount, iconScale) {
   if (!state.showBrandBlock) return;
+  if (!state.logos[i]) return;
   const d = 128,
     x = LOGO_XS[i],
     y = LOGO_Y,
@@ -1954,14 +1955,6 @@ function drawLogoSlot(i, logoAmount, iconScale) {
       else image(img, 0, 0, img.width * s, img.height * s);
       imageMode(CORNER);
       drawingContext.restore();
-    } else {
-      noStroke();
-      fill(COLORS.black);
-      textAlign(CENTER, CENTER);
-      textFont("Helvetica");
-      textStyle(BOLD);
-      textSize(12);
-      text(state.logoLabels[i], 0, 0);
     }
     pop();
   }
@@ -2345,6 +2338,13 @@ function buildEditor() {
     const inp = createFileInput((f) => handleLogo(f, i));
     inp.parent(w);
     inp.attribute("accept", "image/png,image/*");
+    const clear = createButton("RIMUOVI LOGO");
+    clear.class("fix-button secondary");
+    clear.parent(w);
+    clear.mousePressed(() => {
+      state.logos[i] = null;
+      inp.elt.value = "";
+    });
   }
   installLogoUploadControls();
   installPackageAndPlaceControls();
