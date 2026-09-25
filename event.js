@@ -25,7 +25,7 @@
     lines.slice(0,maxLines).forEach((line,i)=>ctx.fillText(i===maxLines-1&&lines.length>maxLines?line.replace(/[.…]*$/,'')+'…':line,x,y+i*lineHeight));
   }
   function eventHeader(){
-    const title=String($('eventTitle').value||'').trim(),date=String($('eventDate').value||'').trim(),titleColor=$('eventTitleColor').value||'#ffffff',x=55,y=82,maxWidth=W-110,lineHeight=52;
+    const title=String($('eventTitle').value||'').trim().toLocaleLowerCase('it-IT'),date=String($('eventDate').value||'').trim(),titleColor=$('eventTitleColor').value||'#ffffff',x=55,y=82,maxWidth=W-110,lineHeight=52;
     ctx.save();ctx.textAlign='left';ctx.textBaseline='top';ctx.font='italic 900 48px "Times New Roman",Georgia,serif';
     const titleLines=wrappedLines(title,maxWidth).slice(0,3);
     titleLines.forEach((line,index)=>{const lineY=y+index*lineHeight;ctx.fillStyle='#ff61b6';ctx.fillText(line,x+6,lineY+6);ctx.strokeStyle='#050505';ctx.lineWidth=5;ctx.lineJoin='round';ctx.strokeText(line,x,lineY);ctx.fillStyle=titleColor;ctx.fillText(line,x,lineY)});

@@ -237,7 +237,7 @@
         <div class="title">TESTI</div>
         <div class="field">
           <label>Titolo</label
-          ><input id="headline" value="EX CASA DEL CUSTODE" />
+          ><input id="headline" value="ex casa del custode" />
         </div>
         <div class="row">
           <div class="field">
@@ -447,16 +447,17 @@
         x.restore();
       }
       function identity() {
+        const headline = String($("headline").value || "").toLocaleLowerCase("it-IT");
         x.textAlign = "left";
         x.textBaseline = "top";
-        x.font = "bold 42px Helvetica";
+        x.font = 'italic 900 48px "Times New Roman", Georgia, serif';
         x.fillStyle = "#ff61b6";
-        x.fillText($("headline").value, 61, 72);
+        x.fillText(headline, 61, 72);
         x.strokeStyle = "#050505";
         x.lineWidth = 5;
         x.fillStyle = "#fff";
-        x.strokeText($("headline").value, 55, 66);
-        x.fillText($("headline").value, 55, 66);
+        x.strokeText(headline, 55, 66);
+        x.fillText(headline, 55, 66);
         x.fillStyle = "#050505";
         x.font = "bold 28px Helvetica";
         x.fillText($("year").value, 57, 117);
