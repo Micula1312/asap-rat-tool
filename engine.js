@@ -2129,12 +2129,12 @@ function installPackageAndPlaceControls() {
     const save = document.createElement("button");
     save.className = "fix-button";
     save.type = "button";
-    save.textContent = "💾 SALVA PACCHETTO";
+    save.textContent = "💾 SALVA JSON";
     save.addEventListener("click", savePackage);
     const load = document.createElement("button");
     load.className = "fix-button secondary";
     load.type = "button";
-    load.textContent = "📂 CARICA PACCHETTO";
+    load.textContent = "📂 CARICA JSON";
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".json,application/json";

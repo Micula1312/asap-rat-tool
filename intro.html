@@ -119,6 +119,11 @@
         grid-template-columns: 1fr 1fr;
         gap: 6px;
       }
+      .folder-row {
+        display: grid;
+        grid-template-columns: 1fr 92px;
+        gap: 6px;
+      }
       .palette,
       .emoji {
         display: flex;
@@ -346,8 +351,10 @@
       </div>
       <div class="section">
         <div class="title">EXPORT INSTAGRAM</div>
-        <button class="action blue" id="folder" style="width:100%;margin-bottom:7px">CARTELLA</button>
-        <div class="actions"><button class="action primary" id="save">PNG POST · 4:5</button><button class="action blue" id="saveStory">PNG STORY · 9:16</button></div>
+        <div class="field"><label>CARTELLA OUTPUT</label><div class="folder-row"><input id="folderName" value="DOWNLOADS" readonly><button class="action blue" id="folder">SCEGLI…</button></div></div>
+        <div class="actions"><button class="action primary" id="saveJSON">SALVA JSON</button><button class="action" id="loadJSON">CARICA JSON</button></div>
+        <input id="loadJSONFile" type="file" accept=".json,application/json" hidden>
+        <div class="actions" style="margin-top:7px"><button class="action primary" id="save">PNG POST · 4:5</button><button class="action blue" id="saveStory">PNG STORY · 9:16</button></div>
         <button class="action pink" id="rec" style="width:100%;margin-top:7px">MP4 POST · ANIMAZIONE</button>
         <div class="hint" id="status">OUTPUT: DOWNLOADS</div>
       </div>
@@ -662,9 +669,10 @@
         $("preview").textContent = s.playing ? "■ STOP" : "▶ PLAY SEQUENZA";
       };
       $("folder").onclick = async () => {
-        if (!window.showDirectoryPicker) return;
+        if (!window.showDirectoryPicker) { $("status").textContent = "OUTPUT: DOWNLOADS"; return; }
         try {
           s.dir = await showDirectoryPicker({ mode: "readwrite" });
+          $("folderName").value = s.dir.name || "CARTELLA SELEZIONATA";
           $("status").textContent = "OUTPUT: " + s.dir.name;
         } catch (e) {}
       };
@@ -684,6 +692,92 @@
         a.remove();
         setTimeout(() => URL.revokeObjectURL(u), 1800);
       }
+      function post02Package() {
+        const values = {};
+        ["headline", "year", "info", "caption", "footer", "p1", "p2", "p3", "tickerTop", "tickerBottom", "tickerSpeed", "scale", "speed"].forEach((id) => values[id] = $(id).value);
+        return {
+          type: "ex-casa-post02-package",
+          version: 1,
+          savedAt: new Date().toISOString(),
+          data: {
+            bg: s.bg,
+            iconA: s.a,
+            iconB: s.b,
+            popupOn: $("popupOn").checked,
+            tickerOn: $("tickerOn").checked,
+            identityOn: Boolean($("logosOn")?.checked),
+            captionAnimation: s.captionAnimation || "static",
+            captionColor: s.captionColor || "#050505",
+            captionSize: s.captionSize || 44,
+            values,
+          },
+          assets: {
+            logos: s.logos.map((image) => image?.src?.startsWith("data:") ? image.src : null),
+            arci: s.arci?.src?.startsWith("data:") ? s.arci.src : null,
+          },
+        };
+      }
+      async function saveJSON() {
+        const blob = new Blob([JSON.stringify(post02Package(), null, 2)], { type: "application/json" });
+        await saveBlob(blob, `ex-casa-post02-icon-${Date.now()}.json`);
+        $("status").textContent = "✓ JSON SALVATO";
+      }
+      function packageImage(src) {
+        return new Promise((resolve, reject) => {
+          if (!src) { resolve(null); return; }
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = reject;
+          image.src = src;
+        });
+      }
+      function refreshIconPickers() {
+        [["emojiA", s.a], ["emojiB", s.b]].forEach(([id, value]) => [...$(id).children].forEach((button) => button.classList.toggle("active", button.textContent === value)));
+      }
+      function loadJSONFile(file) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async () => {
+          try {
+            const pkg = JSON.parse(reader.result);
+            if (pkg?.type !== "ex-casa-post02-package" || !pkg.data) throw new Error("JSON POST 02 non riconosciuto");
+            const d = pkg.data, values = d.values || {};
+            if (BG.includes(d.bg)) s.bg = d.bg;
+            if (EM.includes(d.iconA)) s.a = d.iconA;
+            if (EM.includes(d.iconB)) s.b = d.iconB;
+            Object.entries(values).forEach(([id, value]) => { if ($(id)) $(id).value = String(value); });
+            $("popupOn").checked = Boolean(d.popupOn);
+            $("tickerOn").checked = d.tickerOn !== false;
+            s.captionAnimation = d.captionAnimation || "static";
+            s.captionColor = d.captionColor || "#050505";
+            s.captionSize = Number(d.captionSize) || 44;
+            if ($("captionAnimation")) $("captionAnimation").value = s.captionAnimation;
+            if ($("captionColor")) $("captionColor").value = s.captionColor;
+            if ($("captionSize")) $("captionSize").value = String(s.captionSize);
+            if ($("captionSizeValue")) $("captionSizeValue").textContent = String(s.captionSize);
+            const logoSources = Array.isArray(pkg.assets?.logos) ? pkg.assets.logos : [];
+            s.logos = await Promise.all([0, 1, 2].map((index) => packageImage(logoSources[index] || null)));
+            s.arci = await packageImage(pkg.assets?.arci || null);
+            refreshIconPickers();
+            syncPreset();
+            if ($("logosOn")) {
+              $("logosOn").checked = Boolean(d.identityOn);
+              $("logosOn").dispatchEvent(new Event("change"));
+            } else {
+              s.showBrandBlock = Boolean(d.identityOn);
+              s.showLogos = Boolean(d.identityOn);
+            }
+            if (!d.identityOn) $("tickerOn").dispatchEvent(new Event("change"));
+            document.querySelectorAll("input[type=file]").forEach((input) => input.value = "");
+            $("status").textContent = "✓ JSON CARICATO";
+          } catch (error) {
+            console.error(error);
+            $("status").textContent = "ERRORE JSON";
+            alert(error.message || "File JSON non valido");
+          }
+        };
+        reader.readAsText(file);
+      }
       function savePNG(story) {
         const out = document.createElement("canvas");
         out.width = 2160; out.height = story ? 3840 : 2700;
@@ -697,6 +791,9 @@
       }
       $("save").onclick = () => savePNG(false);
       $("saveStory").onclick = () => savePNG(true);
+      $("saveJSON").onclick = saveJSON;
+      $("loadJSON").onclick = () => $("loadJSONFile").click();
+      $("loadJSONFile").onchange = (event) => { loadJSONFile(event.target.files && event.target.files[0]); event.target.value = ""; };
       $("rec").onclick = async () => {
         if (s.exporting) return;
         try {
