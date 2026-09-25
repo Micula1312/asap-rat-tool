@@ -47,7 +47,6 @@
     ctx.fillStyle='#F5F5F7';ctx.beginPath();ctx.roundRect(x,y,w,h,16);ctx.fill();
     ctx.save();ctx.beginPath();ctx.roundRect(x,y,w,h,16);ctx.clip();ctx.fillStyle='#ECECEF';ctx.fillRect(x,y,w,42);ctx.restore();
     ctx.strokeStyle='rgba(0,0,0,.18)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,y+42);ctx.lineTo(x+w,y+42);ctx.stroke();
-    ctx.strokeStyle='#050505';ctx.lineWidth=4;ctx.beginPath();ctx.roundRect(x,y,w,h,16);ctx.stroke();
     ctx.fillStyle='rgba(0,0,0,.42)';[x+20,x+38,x+56].forEach(px=>{ctx.beginPath();ctx.arc(px,y+21,6,0,Math.PI*2);ctx.fill()});
     ctx.fillStyle='#050505';ctx.textAlign='left';ctx.textBaseline='top';ctx.font='17px Helvetica,Arial,sans-serif';ctx.fillText(item.date,x+32,y+62);
     ctx.font='900 40px Helvetica,Arial,sans-serif';wrapText(item.title,x+32,y+99,w-64,44,metrics.titleLines);
