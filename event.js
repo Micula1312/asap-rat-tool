@@ -122,7 +122,7 @@
     ctx.fillStyle='rgba(0,0,0,.42)';[x+20,x+38,x+56].forEach(px=>{ctx.beginPath();ctx.arc(px,y+21,6,0,Math.PI*2);ctx.fill()});
     if(item.type==='image'){
       const image=popupImages.get(item);
-      if(image){ctx.save();ctx.beginPath();ctx.roundRect(x,y,w,h,16);ctx.clip();const bodyH=h-42,scale=Math.max(w/image.width,bodyH/image.height);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(image,x+(w-image.width*scale)/2,y+42+(bodyH-image.height*scale)/2,image.width*scale,image.height*scale);ctx.restore()}
+      if(image){ctx.save();ctx.beginPath();ctx.roundRect(x,y,w,h,16);ctx.clip();ctx.beginPath();ctx.rect(x,y+42,w,h-42);ctx.clip();const bodyH=h-42,scale=Math.max(w/image.width,bodyH/image.height);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(image,x+(w-image.width*scale)/2,y+42+(bodyH-image.height*scale)/2,image.width*scale,image.height*scale);ctx.restore()}
       else{ctx.fillStyle='#858588';ctx.font='900 22px Helvetica,Arial,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('CARICA IMMAGINE',x+w/2,y+42+(h-42)/2)}
       ctx.restore();return;
     }
