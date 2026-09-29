@@ -25,7 +25,11 @@ const BG_PALETTE = [
   "#5A5B5E",
   "#858588",
   "#C5C3C4",
+  COLORS.acid,
+  COLORS.blue,
+  COLORS.pink,
 ];
+const STROBE_PALETTE = BG_PALETTE.slice(0, 7);
 
 const PLACE_STORAGE_KEY = "ex-casa-map-places-v1";
 
@@ -420,7 +424,7 @@ function startSequence(rec) {
   refreshRatEditors();
   sequence.finalDir = random() < 0.5 ? 1 : -1;
   sequence.finalY = random(330, 1020);
-  sequence.strobeOffset = floor(random(BG_PALETTE.length));
+  sequence.strobeOffset = floor(random(STROBE_PALETTE.length));
   sequence.mode = rec ? "rec" : "play";
   sequence.startedAt = millis();
   sequence.elapsed = 0;
@@ -1026,7 +1030,7 @@ function drawStrobeFinal() {
   const q = constrain((t - 0.86) / 0.14, 0, 1);
   const morph = smoothstep01(constrain(q / 0.72, 0, 1));
   const flash = floor(sequence.elapsed / 95);
-  const c = BG_PALETTE[(flash + sequence.strobeOffset) % BG_PALETTE.length];
+  const c = STROBE_PALETTE[(flash + sequence.strobeOffset) % STROBE_PALETTE.length];
   noStroke();
   fill(c);
   rect(0, 0, BASE_W, BASE_H);

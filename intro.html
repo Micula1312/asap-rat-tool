@@ -381,7 +381,11 @@
           "#5A5B5E",
           "#858588",
           "#C5C3C4",
+          "#dfff00",
+          "#53b7ff",
+          "#ff61b6",
         ],
+        STROBE_BG = BG.slice(0, 7),
         EM = [
           "🐀",
           "🕳️",
@@ -419,7 +423,7 @@
         dir: null,
         playing: false,
         started: 0,
-        strobeOffset: Math.floor(Math.random() * BG.length),
+        strobeOffset: Math.floor(Math.random() * STROBE_BG.length),
         showLogos: false,
       };
       function dots() {
@@ -572,7 +576,7 @@
           finalAt = withPop ? 6200 : 1200,
           strobo = s.playing && elapsed >= finalAt,
           ph = strobo ? Math.floor((elapsed - finalAt) / 95) : 0;
-        x.fillStyle = strobo ? BG[(ph + s.strobeOffset) % BG.length] : s.bg;
+        x.fillStyle = strobo ? STROBE_BG[(ph + s.strobeOffset) % STROBE_BG.length] : s.bg;
         x.fillRect(0, 0, W, H);
         dots();
         identity();
@@ -698,7 +702,7 @@
       $("preview").onclick = () => {
         s.playing = !s.playing;
         s.started = performance.now();
-        s.strobeOffset = Math.floor(Math.random() * BG.length);
+        s.strobeOffset = Math.floor(Math.random() * STROBE_BG.length);
         $("preview").textContent = s.playing ? "■ STOP" : "▶ PLAY SEQUENZA";
       };
       $("folder").onclick = async () => {
@@ -832,7 +836,7 @@
       $("rec").onclick = async () => {
         if (s.exporting) return;
         try {
-          s.playing = true; s.started = performance.now(); s.strobeOffset = Math.floor(Math.random() * BG.length);
+          s.playing = true; s.started = performance.now(); s.strobeOffset = Math.floor(Math.random() * STROBE_BG.length);
           $("preview").textContent = "■ STOP"; $("status").textContent = "● MP4 H.264 · 2160×2700";
           s.exporting = IGExport.startMP4({ canvas: c, scale: 2, duration: durationMs(), onProgress: (p) => $("status").textContent = `● MP4 H.264 · ${Math.round(p * 100)}%` });
           const b = await s.exporting.promise;

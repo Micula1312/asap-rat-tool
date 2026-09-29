@@ -18,6 +18,7 @@
     <section class="section"><div class="title">TESTATA EVENTO</div>
       <div class="field"><label>Titolo evento</label><textarea id="eventTitle">titolo dell’evento</textarea></div>
       <div class="row"><div class="field"><label>Data evento</label><input id="eventDate" value="12.03.2027"></div><div class="field"><label>Colore titolo</label><input id="eventTitleColor" type="color" value="#ffffff" style="height:38px;padding:3px;cursor:pointer"></div></div>
+      <div class="field"><label for="eventPillColor">Colore pillola data</label><select id="eventPillColor"><option value="#dfff00">GIALLO · EVENTO</option><option value="#53b7ff">BLU · LABORATORIO</option><option value="#ff61b6">ROSA</option></select></div>
       <div class="row"><div class="field"><label for="eventTitleSize">Dimensione · <span id="eventTitleSizeValue">56</span> px</label><input id="eventTitleSize" type="range" min="24" max="120" step="1" value="56"></div><div class="field"><label for="eventTitleAnimation">Animazione titolo</label><select id="eventTitleAnimation"><option value="float" selected>FLOAT</option><option value="static">STATIC</option><option value="wave">WAVE</option><option value="shake">SHAKE</option><option value="pulse">PULSE</option><option value="type">TYPE</option><option value="slide">SLIDE</option><option value="spin">SPIN</option></select></div></div>
       <div class="hint">Titolo corsivo allineato a sinistra; la data è una pill come le etichette dei luoghi.</div>
     </section>
@@ -52,5 +53,5 @@
     </section>
     <section class="section"><div class="title">EXPORT INSTAGRAM</div><div class="field"><label>CARTELLA OUTPUT</label><div class="folder-row"><input id="folderName" value="DOWNLOADS" readonly><button class="action blue" id="folder">SCEGLI…</button></div></div><div class="actions"><button class="action primary" id="saveJSON">SALVA JSON</button><button class="action" id="loadJSON">CARICA JSON</button></div><input id="loadJSONFile" type="file" accept=".json,application/json" hidden><div class="actions" style="margin-top:7px"><button class="action primary" id="save">PNG POST · 4:5</button><button class="action blue" id="saveStory">PNG STORY · 9:16</button></div><button class="action pink" id="rec" style="width:100%;margin-top:7px">MP4 POST · ANIMAZIONE</button><div class="hint" id="status">OUTPUT: DOWNLOADS</div></section>
   </aside>
-<script src="vendor/mp4-muxer.js?v=1"></script><script src="ig-export.js?v=5"></script><script src="event.js?v=21"></script>
+<script src="vendor/mp4-muxer.js?v=1"></script><script src="ig-export.js?v=5"></script><script src="event.js?v=22"></script>
 </body></html>
