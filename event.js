@@ -2,9 +2,9 @@
   const W=1080,H=1350,DURATION=5000,POP_W=540,POP_H=300,POP_GRAB=64,BG=['#08090B','#151619','#242529','#3A3B3F','#5A5B5E','#858588','#C5C3C4','#dfff00','#53b7ff','#ff61b6'],PILL_COLORS=['#dfff00','#53b7ff','#ff61b6'];
   const canvas=document.getElementById('eventCanvas'),ctx=canvas.getContext('2d'),$=id=>document.getElementById(id);
   const state={bg:BG[1],image:null,imageDataURL:null,brandLogo:null,arciLogo:null,footerLogos:[null,null,null],logoSources:{brandLogo:null,arciLogo:null,footerLogo0:null,footerLogo1:null,footerLogo2:null},playing:false,started:0,dir:null,recorder:null,drag:null,popups:[
-    {date:'ORE 18:00',title:'ATTIVITÀ 01',description:'Descrizione e informazioni specifiche della prima attività.',partners:'',x:70,y:275},
-    {date:'ORE 21:00',title:'ATTIVITÀ 02',description:'Descrizione e informazioni specifiche della seconda attività.',partners:'',x:470,y:560},
-    {date:'ORE 23:00',title:'ATTIVITÀ 03',description:'Descrizione e informazioni specifiche della terza attività.',partners:'',x:150,y:845}
+    {date:'ORE 18:00',title:'ATTIVITÀ 01',description:'Descrizione e informazioni specifiche della prima attività.',info:'Info, costi e iscrizioni: …',partners:'',x:70,y:275},
+    {date:'ORE 21:00',title:'ATTIVITÀ 02',description:'Descrizione e informazioni specifiche della seconda attività.',info:'Info, costi e iscrizioni: …',partners:'',x:470,y:560},
+    {date:'ORE 23:00',title:'ATTIVITÀ 03',description:'Descrizione e informazioni specifiche della terza attività.',info:'Info, costi e iscrizioni: …',partners:'',x:150,y:845}
   ]};
   const popupImages=new WeakMap();
   function loadPopupImage(item,source){
@@ -108,10 +108,10 @@
   function popupMetrics(item){
     const w=item.wide?W-110:POP_W;
     if(item.type==='image')return{w,h:item.wide?560:340};
-    const partnerText=String(item.partners||'').trim();ctx.save();ctx.font='900 40px Helvetica,Arial,sans-serif';const titleLines=wrappedLines(item.title,w-64).length;ctx.font='21px Helvetica,Arial,sans-serif';const descriptionLines=wrappedLines(item.description,w-64).length;ctx.font='900 15px Helvetica,Arial,sans-serif';const partnerLines=partnerText?wrappedLines(partnerText,w-64).length:0;ctx.restore();
-    const titleHeight=Math.max(1,titleLines)*44,descriptionY=99+titleHeight+24,bottomSpace=partnerLines?partnerLines*20+37:24,naturalHeight=descriptionY+Math.max(1,descriptionLines)*28+bottomSpace;
+    const partnerText=String(item.partners||'').trim(),infoText=String(item.info||'').trim();ctx.save();ctx.font='900 40px Helvetica,Arial,sans-serif';const titleLines=wrappedLines(item.title,w-64).length;ctx.font='21px Helvetica,Arial,sans-serif';const descriptionLines=wrappedLines(item.description,w-64).length;ctx.font='italic 18px Georgia,"Times New Roman",serif';const infoLines=infoText?wrappedLines(infoText,w-64).length:0;ctx.font='900 15px Helvetica,Arial,sans-serif';const partnerLines=partnerText?wrappedLines(partnerText,w-64).length:0;ctx.restore();
+    const titleHeight=Math.max(1,titleLines)*44,descriptionY=99+titleHeight+24,infoY=descriptionY+Math.max(1,descriptionLines)*28+7,partnerY=infoY+infoLines*23+(infoLines?10:0),bottomSpace=partnerLines?partnerLines*20+37:24,naturalHeight=infoLines?partnerY+partnerLines*20+32:descriptionY+Math.max(1,descriptionLines)*28+bottomSpace;
     const baseHeight=partnerLines?POP_H:POP_H-35;
-    return{w,h:Math.min(H-116,Math.max(baseHeight,naturalHeight)),titleLines,titleHeight,descriptionY,partnerLines,bottomSpace};
+    return{w,h:Math.min(H-116,Math.max(baseHeight,naturalHeight)),titleLines,titleHeight,descriptionY,infoY,infoLines,partnerY,partnerLines,bottomSpace};
   }
   function popup(item,progress){
     const eased=1-Math.pow(1-Math.max(0,Math.min(1,progress)),3),metrics=popupMetrics(item),w=metrics.w,h=metrics.h,x=item.x,y=item.y;
@@ -128,7 +128,8 @@
     }
     ctx.fillStyle='#050505';ctx.textAlign='left';ctx.textBaseline='top';ctx.font='17px Helvetica,Arial,sans-serif';ctx.fillText(item.date,x+32,y+62);
     ctx.font='900 40px Helvetica,Arial,sans-serif';wrapText(item.title,x+32,y+99,w-64,44,metrics.titleLines);
-    ctx.font='21px Helvetica,Arial,sans-serif';const descriptionMax=Math.max(1,Math.floor((h-metrics.descriptionY-metrics.bottomSpace)/28));wrapText(item.description,x+32,y+metrics.descriptionY,w-64,28,descriptionMax);
+    ctx.font='21px Helvetica,Arial,sans-serif';const descriptionMax=Math.max(1,Math.floor((h-metrics.descriptionY-(metrics.infoLines?metrics.infoLines*23+40:metrics.bottomSpace))/28));wrapText(item.description,x+32,y+metrics.descriptionY,w-64,28,descriptionMax);
+    if(metrics.infoLines){ctx.font='italic 18px Georgia,"Times New Roman",serif';ctx.fillStyle='#050505';const infoY=metrics.descriptionY+descriptionMax*28+7,infoMax=Math.max(1,Math.floor((h-infoY-(metrics.partnerLines?metrics.partnerLines*20+42:24))/23));wrapText(String(item.info).trim(),x+32,y+infoY,w-64,23,infoMax)}
     if(metrics.partnerLines){ctx.font='900 15px Helvetica,Arial,sans-serif';ctx.fillStyle='#ff61b6';wrapText(String(item.partners).trim(),x+32,y+h-43-(metrics.partnerLines-1)*20,w-64,20,metrics.partnerLines)}
     ctx.restore();
   }
@@ -166,7 +167,7 @@
       const wide=document.createElement('label'),wideInput=document.createElement('input');wide.className='check';wideInput.type='checkbox';wideInput.checked=Boolean(item.wide);wide.append(wideInput,' LARGO · 100W');wideInput.onchange=()=>{item.wide=wideInput.checked;if(item.wide)item.x=55;fitPopup(item)};
       const imageField=document.createElement('div'),imageLabel=document.createElement('label'),imageInput=document.createElement('input'),clearImage=document.createElement('button');imageField.className='field';imageLabel.textContent='Immagine popup · riempie il corpo';imageInput.type='file';imageInput.accept='image/*';clearImage.type='button';clearImage.className='clear-logo';clearImage.textContent='RIMUOVI IMMAGINE';clearImage.hidden=!item.imageDataURL;imageInput.onchange=event=>{const file=event.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{await loadPopupImage(item,reader.result);clearImage.hidden=false;fitPopup(item)}catch(error){console.error(error);$('status').textContent='ERRORE IMMAGINE POPUP'}};reader.readAsDataURL(file)};clearImage.onclick=()=>{loadPopupImage(item,null);imageInput.value='';clearImage.hidden=true;fitPopup(item)};imageField.append(imageLabel,imageInput,clearImage);
       if(item.type==='image')card.append(head,wide,imageField);
-      else card.append(head,wide,popupField('Orario / data attività','date',item),popupField('Titolo attività','title',item,true),popupField('Descrizione','description',item,true),popupField('Partners','partners',item));
+      else card.append(head,wide,popupField('Orario / data attività','date',item),popupField('Titolo attività','title',item,true),popupField('Descrizione','description',item,true),popupField('Info e costi · corsivo','info',item,true),popupField('Partners','partners',item));
       list.appendChild(card);
     });
   }
@@ -176,7 +177,7 @@
   canvas.addEventListener('pointermove',event=>{if(!state.drag)return;const point=canvasPoint(event),item=state.drag.item;item.x=point.x-state.drag.dx;item.y=point.y-state.drag.dy;fitPopup(item)});
   function stopDrag(event){if(!state.drag)return;state.drag=null;canvas.classList.remove('dragging');if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId)}
   canvas.addEventListener('pointerup',stopDrag);canvas.addEventListener('pointercancel',stopDrag);
-  $('addPopup').onclick=()=>{const index=state.popups.length,offset=(index%5)*38;state.popups.push({date:'ORE 00:00',title:`ATTIVITÀ ${String(index+1).padStart(2,'0')}`,description:'Descrizione e informazioni specifiche dell’attività.',partners:'',x:(W-POP_W)/2+offset,y:300+offset});renderPopupEditors();$('panel').scrollTop=$('popupList').offsetTop+$('popupList').offsetHeight};
+  $('addPopup').onclick=()=>{const index=state.popups.length,offset=(index%5)*38;state.popups.push({date:'ORE 00:00',title:`ATTIVITÀ ${String(index+1).padStart(2,'0')}`,description:'Descrizione e informazioni specifiche dell’attività.',info:'Info, costi e iscrizioni: …',partners:'',x:(W-POP_W)/2+offset,y:300+offset});renderPopupEditors();$('panel').scrollTop=$('popupList').offsetTop+$('popupList').offsetHeight};
   $('addImagePopup').onclick=()=>{state.popups.push({type:'image',imageDataURL:null,wide:false,x:270,y:420});renderPopupEditors();$('panel').scrollTop=$('popupList').offsetTop+$('popupList').offsetHeight};
   $('play').onclick=()=>{state.playing=!state.playing;state.started=performance.now();$('play').textContent=state.playing?'■ STOP':'▶ PLAY SEQUENZA'};
   $('rec').onclick=async()=>{if(state.recorder)return;try{state.playing=true;state.started=performance.now();$('play').textContent='■ STOP';$('status').textContent='● MP4 H.264 · 2160×2700 · 5 SEC';state.recorder=IGExport.startMP4({canvas,scale:2,duration:DURATION,onProgress:p=>$('status').textContent=`● MP4 H.264 · ${Math.round(p*100)}%`});const blob=await state.recorder.promise;await saveBlob(blob,`ex-casa-post03-animation-${Date.now()}.mp4`);$('status').textContent=`✓ MP4 POST 2160×2700 · ${(blob.size/1024/1024).toFixed(1)} MB`}catch(error){if(error.name!=='AbortError'){console.error(error);$('status').textContent=`MP4 ERROR · ${error.message||error}`}}finally{state.recorder=null;state.playing=false;$('play').textContent='▶ PLAY SEQUENZA'}};
