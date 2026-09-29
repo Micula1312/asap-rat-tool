@@ -6,6 +6,12 @@
     {date:'ORE 21:00',title:'ATTIVITÀ 02',description:'Descrizione e informazioni specifiche della seconda attività.',partners:'',x:470,y:560},
     {date:'ORE 23:00',title:'ATTIVITÀ 03',description:'Descrizione e informazioni specifiche della terza attività.',partners:'',x:150,y:845}
   ]};
+  const popupImages=new WeakMap();
+  function loadPopupImage(item,source){
+    item.imageDataURL=source||null;popupImages.delete(item);
+    if(!source)return Promise.resolve();
+    return new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>{popupImages.set(item,image);resolve()};image.onerror=reject;image.src=source});
+  }
   function coverImage(img,zoom=1){
     const scale=Math.max(W/img.width,H/img.height)*zoom,sw=W/scale,sh=H/scale,sx=(img.width-sw)/2,sy=(img.height-sh)/2;
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(img,sx,sy,sw,sh,0,0,W,H);
@@ -100,7 +106,9 @@
     }
   }
   function popupMetrics(item){
-    const w=POP_W,partnerText=String(item.partners||'').trim();ctx.save();ctx.font='900 40px Helvetica,Arial,sans-serif';const titleLines=wrappedLines(item.title,w-64).length;ctx.font='21px Helvetica,Arial,sans-serif';const descriptionLines=wrappedLines(item.description,w-64).length;ctx.font='900 15px Helvetica,Arial,sans-serif';const partnerLines=partnerText?wrappedLines(partnerText,w-64).length:0;ctx.restore();
+    const w=item.wide?W-110:POP_W;
+    if(item.type==='image')return{w,h:item.wide?560:340};
+    const partnerText=String(item.partners||'').trim();ctx.save();ctx.font='900 40px Helvetica,Arial,sans-serif';const titleLines=wrappedLines(item.title,w-64).length;ctx.font='21px Helvetica,Arial,sans-serif';const descriptionLines=wrappedLines(item.description,w-64).length;ctx.font='900 15px Helvetica,Arial,sans-serif';const partnerLines=partnerText?wrappedLines(partnerText,w-64).length:0;ctx.restore();
     const titleHeight=Math.max(1,titleLines)*44,descriptionY=99+titleHeight+24,bottomSpace=partnerLines?partnerLines*20+37:24,naturalHeight=descriptionY+Math.max(1,descriptionLines)*28+bottomSpace;
     const baseHeight=partnerLines?POP_H:POP_H-35;
     return{w,h:Math.min(H-116,Math.max(baseHeight,naturalHeight)),titleLines,titleHeight,descriptionY,partnerLines,bottomSpace};
@@ -112,6 +120,12 @@
     ctx.save();ctx.beginPath();ctx.roundRect(x,y,w,h,16);ctx.clip();ctx.fillStyle='#ECECEF';ctx.fillRect(x,y,w,42);ctx.restore();
     ctx.strokeStyle='rgba(0,0,0,.18)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,y+42);ctx.lineTo(x+w,y+42);ctx.stroke();
     ctx.fillStyle='rgba(0,0,0,.42)';[x+20,x+38,x+56].forEach(px=>{ctx.beginPath();ctx.arc(px,y+21,6,0,Math.PI*2);ctx.fill()});
+    if(item.type==='image'){
+      const image=popupImages.get(item);
+      if(image){ctx.save();ctx.beginPath();ctx.roundRect(x,y,w,h,16);ctx.clip();const bodyH=h-42,scale=Math.max(w/image.width,bodyH/image.height);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(image,x+(w-image.width*scale)/2,y+42+(bodyH-image.height*scale)/2,image.width*scale,image.height*scale);ctx.restore()}
+      else{ctx.fillStyle='#858588';ctx.font='900 22px Helvetica,Arial,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('CARICA IMMAGINE',x+w/2,y+42+(h-42)/2)}
+      ctx.restore();return;
+    }
     ctx.fillStyle='#050505';ctx.textAlign='left';ctx.textBaseline='top';ctx.font='17px Helvetica,Arial,sans-serif';ctx.fillText(item.date,x+32,y+62);
     ctx.font='900 40px Helvetica,Arial,sans-serif';wrapText(item.title,x+32,y+99,w-64,44,metrics.titleLines);
     ctx.font='21px Helvetica,Arial,sans-serif';const descriptionMax=Math.max(1,Math.floor((h-metrics.descriptionY-metrics.bottomSpace)/28));wrapText(item.description,x+32,y+metrics.descriptionY,w-64,28,descriptionMax);
@@ -139,7 +153,7 @@
       const image=new Image();image.onload=()=>{assign(image);resolve()};image.onerror=reject;image.src=src;
     });
   }
-  function loadJSONFile(file){if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{const pkg=JSON.parse(reader.result);if(pkg?.type!=='ex-casa-post03-package'||!pkg.data)throw new Error('JSON POST 03 non riconosciuto');const d=pkg.data;state.bg=BG.includes(d.bg)?d.bg:state.bg;$('eventTitle').value=String(d.eventTitle??'');$('eventDate').value=String(d.eventDate??'');$('eventPillColor').value=PILL_COLORS.includes(d.eventPillColor)?d.eventPillColor:PILL_COLORS[0];$('eventTitleColor').value=d.eventTitleColor||'#ffffff';$('eventTitleSize').value=String(Math.max(24,Math.min(120,Number(d.eventTitleSize)||56)));$('eventTitleSizeValue').textContent=$('eventTitleSize').value;$('eventTitleAnimation').value=['float','static','wave','shake','pulse','type','slide','spin'].includes(d.eventTitleAnimation)?d.eventTitleAnimation:'float';$('brandOn').checked=d.brandOn!==false;$('logoBg').value=['none','white','overlay-white'].includes(d.logoBg)?d.logoBg:'none';$('copyright').value=String(d.copyright??'© ASAP RAT ENGINE');$('overlay').value=String(d.overlay??'0.2');$('tickerOn').checked=d.tickerOn!==false;$('tickerTop').value=String(d.tickerTop??'');$('tickerBottom').value=String(d.tickerBottom??'');$('tickerSpeed').value=String(d.tickerSpeed??'85');if(Array.isArray(d.popups)&&d.popups.length)state.popups=d.popups.map(item=>({...item}));await loadBackgroundSource(pkg.assets?.background||null);await Promise.all(Object.keys(state.logoSources).map(id=>loadLogoSource(id,pkg.assets?.logos?.[id]||null)));renderPopupEditors();$('backgroundImage').value='';Object.keys(state.logoSources).forEach(id=>$(id).value='');$('status').textContent='✓ JSON CARICATO'}catch(error){console.error(error);$('status').textContent='ERRORE JSON';alert(error.message||'File JSON non valido')}};reader.readAsText(file)}
+  function loadJSONFile(file){if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{const pkg=JSON.parse(reader.result);if(pkg?.type!=='ex-casa-post03-package'||!pkg.data)throw new Error('JSON POST 03 non riconosciuto');const d=pkg.data;state.bg=BG.includes(d.bg)?d.bg:state.bg;$('eventTitle').value=String(d.eventTitle??'');$('eventDate').value=String(d.eventDate??'');$('eventPillColor').value=PILL_COLORS.includes(d.eventPillColor)?d.eventPillColor:PILL_COLORS[0];$('eventTitleColor').value=d.eventTitleColor||'#ffffff';$('eventTitleSize').value=String(Math.max(24,Math.min(120,Number(d.eventTitleSize)||56)));$('eventTitleSizeValue').textContent=$('eventTitleSize').value;$('eventTitleAnimation').value=['float','static','wave','shake','pulse','type','slide','spin'].includes(d.eventTitleAnimation)?d.eventTitleAnimation:'float';$('brandOn').checked=d.brandOn!==false;$('logoBg').value=['none','white','overlay-white'].includes(d.logoBg)?d.logoBg:'none';$('copyright').value=String(d.copyright??'© ASAP RAT ENGINE');$('overlay').value=String(d.overlay??'0.2');$('tickerOn').checked=d.tickerOn!==false;$('tickerTop').value=String(d.tickerTop??'');$('tickerBottom').value=String(d.tickerBottom??'');$('tickerSpeed').value=String(d.tickerSpeed??'85');if(Array.isArray(d.popups)&&d.popups.length){state.popups=d.popups.map(item=>({...item}));await Promise.all(state.popups.map(item=>loadPopupImage(item,item.imageDataURL)))}await loadBackgroundSource(pkg.assets?.background||null);await Promise.all(Object.keys(state.logoSources).map(id=>loadLogoSource(id,pkg.assets?.logos?.[id]||null)));renderPopupEditors();$('backgroundImage').value='';Object.keys(state.logoSources).forEach(id=>$(id).value='');$('status').textContent='✓ JSON CARICATO'}catch(error){console.error(error);$('status').textContent='ERRORE JSON';alert(error.message||'File JSON non valido')}};reader.readAsText(file)}
   function savePNG(story){const out=outputCanvas(story);out.toBlob(async blob=>{await saveBlob(blob,`ex-casa-post03-${story?'story-9x16':'post-4x5'}-${Date.now()}.png`);$('status').textContent=`✓ PNG ${story?'STORY 2160×3840':'POST 2160×2700'} · ${(blob.size/1024/1024).toFixed(1)} MB`;out.width=out.height=1},'image/png')}
   function popupField(label,key,item,multiline=false){
     const field=document.createElement('div'),caption=document.createElement('label'),input=document.createElement(multiline?'textarea':'input');
@@ -148,7 +162,12 @@
   function renderPopupEditors(){
     const list=$('popupList');list.replaceChildren();state.popups.forEach((item,index)=>{
       const card=document.createElement('div'),head=document.createElement('div'),name=document.createElement('span'),remove=document.createElement('button');
-      card.className='popup-card';head.className='popup-card-head';name.textContent=`ATTIVITÀ ${String(index+1).padStart(2,'0')}`;remove.className='popup-remove';remove.type='button';remove.textContent='RIMUOVI';remove.disabled=state.popups.length===1;remove.onclick=()=>{if(state.popups.length>1){state.popups.splice(index,1);renderPopupEditors()}};head.append(name,remove);card.append(head,popupField('Orario / data attività','date',item),popupField('Titolo attività','title',item,true),popupField('Descrizione','description',item,true),popupField('Partners','partners',item));list.appendChild(card);
+      card.className='popup-card';head.className='popup-card-head';name.textContent=item.type==='image'?`POPUP IMMAGINE ${String(index+1).padStart(2,'0')}`:`ATTIVITÀ ${String(index+1).padStart(2,'0')}`;remove.className='popup-remove';remove.type='button';remove.textContent='RIMUOVI';remove.disabled=state.popups.length===1&&item.type!=='image';remove.onclick=()=>{if(!remove.disabled){state.popups.splice(index,1);renderPopupEditors()}};head.append(name,remove);
+      const wide=document.createElement('label'),wideInput=document.createElement('input');wide.className='check';wideInput.type='checkbox';wideInput.checked=Boolean(item.wide);wide.append(wideInput,' LARGO · 100W');wideInput.onchange=()=>{item.wide=wideInput.checked;if(item.wide)item.x=55;fitPopup(item)};
+      const imageField=document.createElement('div'),imageLabel=document.createElement('label'),imageInput=document.createElement('input'),clearImage=document.createElement('button');imageField.className='field';imageLabel.textContent='Immagine popup · riempie il corpo';imageInput.type='file';imageInput.accept='image/*';clearImage.type='button';clearImage.className='clear-logo';clearImage.textContent='RIMUOVI IMMAGINE';clearImage.hidden=!item.imageDataURL;imageInput.onchange=event=>{const file=event.target.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=async()=>{try{await loadPopupImage(item,reader.result);clearImage.hidden=false;fitPopup(item)}catch(error){console.error(error);$('status').textContent='ERRORE IMMAGINE POPUP'}};reader.readAsDataURL(file)};clearImage.onclick=()=>{loadPopupImage(item,null);imageInput.value='';clearImage.hidden=true;fitPopup(item)};imageField.append(imageLabel,imageInput,clearImage);
+      if(item.type==='image')card.append(head,wide,imageField);
+      else card.append(head,wide,popupField('Orario / data attività','date',item),popupField('Titolo attività','title',item,true),popupField('Descrizione','description',item,true),popupField('Partners','partners',item));
+      list.appendChild(card);
     });
   }
   function canvasPoint(event){const rect=canvas.getBoundingClientRect();return{x:(event.clientX-rect.left)*W/rect.width,y:(event.clientY-rect.top)*H/rect.height}}
@@ -158,6 +177,7 @@
   function stopDrag(event){if(!state.drag)return;state.drag=null;canvas.classList.remove('dragging');if(canvas.hasPointerCapture(event.pointerId))canvas.releasePointerCapture(event.pointerId)}
   canvas.addEventListener('pointerup',stopDrag);canvas.addEventListener('pointercancel',stopDrag);
   $('addPopup').onclick=()=>{const index=state.popups.length,offset=(index%5)*38;state.popups.push({date:'ORE 00:00',title:`ATTIVITÀ ${String(index+1).padStart(2,'0')}`,description:'Descrizione e informazioni specifiche dell’attività.',partners:'',x:(W-POP_W)/2+offset,y:300+offset});renderPopupEditors();$('panel').scrollTop=$('popupList').offsetTop+$('popupList').offsetHeight};
+  $('addImagePopup').onclick=()=>{state.popups.push({type:'image',imageDataURL:null,wide:false,x:270,y:420});renderPopupEditors();$('panel').scrollTop=$('popupList').offsetTop+$('popupList').offsetHeight};
   $('play').onclick=()=>{state.playing=!state.playing;state.started=performance.now();$('play').textContent=state.playing?'■ STOP':'▶ PLAY SEQUENZA'};
   $('rec').onclick=async()=>{if(state.recorder)return;try{state.playing=true;state.started=performance.now();$('play').textContent='■ STOP';$('status').textContent='● MP4 H.264 · 2160×2700 · 5 SEC';state.recorder=IGExport.startMP4({canvas,scale:2,duration:DURATION,onProgress:p=>$('status').textContent=`● MP4 H.264 · ${Math.round(p*100)}%`});const blob=await state.recorder.promise;await saveBlob(blob,`ex-casa-post03-animation-${Date.now()}.mp4`);$('status').textContent=`✓ MP4 POST 2160×2700 · ${(blob.size/1024/1024).toFixed(1)} MB`}catch(error){if(error.name!=='AbortError'){console.error(error);$('status').textContent=`MP4 ERROR · ${error.message||error}`}}finally{state.recorder=null;state.playing=false;$('play').textContent='▶ PLAY SEQUENZA'}};
   $('save').onclick=()=>savePNG(false);$('saveStory').onclick=()=>savePNG(true);$('saveJSON').onclick=saveJSON;$('loadJSON').onclick=()=>$('loadJSONFile').click();$('loadJSONFile').onchange=event=>{loadJSONFile(event.target.files&&event.target.files[0]);event.target.value=''};
