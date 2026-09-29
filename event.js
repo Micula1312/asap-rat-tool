@@ -1,5 +1,5 @@
 (function(){
-  const W=1080,H=1350,DURATION=5000,POP_W=540,POP_H=300,POP_GRAB=64,BG=['#08090B','#151619','#242529','#3A3B3F','#5A5B5E','#858588','#C5C3C4','#dfff00','#53b7ff','#ff61b6'],PILL_COLORS=['#dfff00','#53b7ff','#ff61b6'];
+  const W=1080,H=1350,DURATION=5000,POP_W=540,POP_H=300,POP_GRAB=64,INFO_GAP=24,BG=['#08090B','#151619','#242529','#3A3B3F','#5A5B5E','#858588','#C5C3C4','#dfff00','#53b7ff','#ff61b6'],PILL_COLORS=['#dfff00','#53b7ff','#ff61b6'];
   const canvas=document.getElementById('eventCanvas'),ctx=canvas.getContext('2d'),$=id=>document.getElementById(id);
   const state={bg:BG[1],image:null,imageDataURL:null,brandLogo:null,arciLogo:null,footerLogos:[null,null,null],logoSources:{brandLogo:null,arciLogo:null,footerLogo0:null,footerLogo1:null,footerLogo2:null},playing:false,started:0,dir:null,recorder:null,drag:null,popups:[
     {date:'ORE 18:00',title:'ATTIVITÀ 01',description:'Descrizione e informazioni specifiche della prima attività.',info:'Info, costi e iscrizioni: …',partners:'',x:70,y:275},
@@ -109,7 +109,7 @@
     const w=item.wide?W-110:POP_W;
     if(item.type==='image')return{w,h:item.wide?560:340};
     const partnerText=String(item.partners||'').trim(),infoText=String(item.info||'').trim();ctx.save();ctx.font='900 40px Helvetica,Arial,sans-serif';const titleLines=wrappedLines(item.title,w-64).length;ctx.font='21px Helvetica,Arial,sans-serif';const descriptionLines=wrappedLines(item.description,w-64).length;ctx.font='italic 18px Georgia,"Times New Roman",serif';const infoLines=infoText?wrappedLines(infoText,w-64).length:0;ctx.font='900 15px Helvetica,Arial,sans-serif';const partnerLines=partnerText?wrappedLines(partnerText,w-64).length:0;ctx.restore();
-    const titleHeight=Math.max(1,titleLines)*44,descriptionY=99+titleHeight+24,infoY=descriptionY+Math.max(1,descriptionLines)*28+7,partnerY=infoY+infoLines*23+(infoLines?10:0),bottomSpace=partnerLines?partnerLines*20+37:24,naturalHeight=infoLines?partnerY+partnerLines*20+32:descriptionY+Math.max(1,descriptionLines)*28+bottomSpace;
+    const titleHeight=Math.max(1,titleLines)*44,descriptionY=99+titleHeight+24,infoY=descriptionY+Math.max(1,descriptionLines)*28+INFO_GAP,partnerY=infoY+infoLines*23+(infoLines?10:0),bottomSpace=partnerLines?partnerLines*20+37:24,naturalHeight=infoLines?partnerY+partnerLines*20+32:descriptionY+Math.max(1,descriptionLines)*28+bottomSpace;
     const baseHeight=partnerLines?POP_H:POP_H-35;
     return{w,h:Math.min(H-116,Math.max(baseHeight,naturalHeight)),titleLines,titleHeight,descriptionY,descriptionLines,infoY,infoLines,partnerY,partnerLines,bottomSpace};
   }
@@ -128,8 +128,8 @@
     }
     ctx.fillStyle='#050505';ctx.textAlign='left';ctx.textBaseline='top';ctx.font='17px Helvetica,Arial,sans-serif';ctx.fillText(item.date,x+32,y+62);
     ctx.font='900 40px Helvetica,Arial,sans-serif';wrapText(item.title,x+32,y+99,w-64,44,metrics.titleLines);
-    ctx.font='21px Helvetica,Arial,sans-serif';const descriptionMax=Math.min(metrics.descriptionLines,Math.max(1,Math.floor((h-metrics.descriptionY-(metrics.infoLines?metrics.infoLines*23+40:metrics.bottomSpace))/28)));wrapText(item.description,x+32,y+metrics.descriptionY,w-64,28,descriptionMax);
-    if(metrics.infoLines){ctx.font='italic 18px Georgia,"Times New Roman",serif';ctx.fillStyle='#050505';const infoY=metrics.descriptionY+descriptionMax*28+7,infoMax=Math.min(metrics.infoLines,Math.max(1,Math.floor((h-infoY-(metrics.partnerLines?metrics.partnerLines*20+42:24))/23)));wrapText(String(item.info).trim(),x+32,y+infoY,w-64,23,infoMax)}
+    ctx.font='21px Helvetica,Arial,sans-serif';const descriptionMax=Math.min(metrics.descriptionLines,Math.max(1,Math.floor((h-metrics.descriptionY-(metrics.infoLines?metrics.infoLines*23+INFO_GAP+33:metrics.bottomSpace))/28)));wrapText(item.description,x+32,y+metrics.descriptionY,w-64,28,descriptionMax);
+    if(metrics.infoLines){ctx.font='italic 18px Georgia,"Times New Roman",serif';ctx.fillStyle='#050505';const infoY=metrics.descriptionY+descriptionMax*28+INFO_GAP,infoMax=Math.min(metrics.infoLines,Math.max(1,Math.floor((h-infoY-(metrics.partnerLines?metrics.partnerLines*20+42:24))/23)));wrapText(String(item.info).trim(),x+32,y+infoY,w-64,23,infoMax)}
     if(metrics.partnerLines){ctx.font='900 15px Helvetica,Arial,sans-serif';ctx.fillStyle='#ff61b6';wrapText(String(item.partners).trim(),x+32,y+h-43-(metrics.partnerLines-1)*20,w-64,20,metrics.partnerLines)}
     ctx.restore();
   }
