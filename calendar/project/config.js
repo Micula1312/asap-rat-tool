@@ -1,0 +1,1 @@
+window.ASAP_SUPABASE = { url: "", anonKey: "" }; // Fill with Supabase Project URL and publishable/anon key only.
