@@ -972,10 +972,10 @@ function drawMonthlyAgendaCard(a) {
   circle(45, 16, 9);
   fill(COLORS.black);
   textAlign(LEFT, TOP);
-  textFont("Helvetica");
-  textStyle(BOLDITALIC);
-  textSize(38);
-  text(state.agendaTitle || "", 24, 48, w - 48, 46);
+  textFont("Times New Roman");
+  textStyle(ITALIC);
+  textSize(44);
+  text(state.agendaTitle || "", 24, 44, w - 48, 56);
   textStyle(NORMAL);
   textSize(19);
   text(state.agendaSubtitle || "", 24, 96, w - 48, 30);
