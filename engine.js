@@ -973,7 +973,7 @@ function drawMonthlyAgendaCard(a) {
   fill(COLORS.black);
   textAlign(LEFT, TOP);
   textFont("Helvetica");
-  textStyle(BOLD);
+  textStyle(BOLDITALIC);
   textSize(38);
   text(state.agendaTitle || "", 24, 48, w - 48, 46);
   textStyle(NORMAL);
