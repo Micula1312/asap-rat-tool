@@ -919,7 +919,7 @@ function generateRatStarts() {
 
 function drawArciMark() {
   if (!state.showArciMark) return;
-  const x = 974, y = 77, maxWidth = 142, maxHeight = 112;
+  const x = 974, y = 49, maxWidth = 118, maxHeight = 65;
   push();
   translate(x, y);
   if (state.arciLogo) {
