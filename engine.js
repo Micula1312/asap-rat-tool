@@ -808,6 +808,7 @@ state.logoIcons = ["🍒", "🍋", "🍇"];
 
 state.arciLogo = null;
 state.showArciMark = true;
+state.headerLogoScale = 1;
 
 state.finalCaption = "2026 edition";
 
@@ -945,7 +946,7 @@ function drawArciMark() {
         : { x: 0, y: 0, w: img.width, h: img.height };
     }
     const b = img._ratVisibleBounds;
-    const s = Math.min(maxWidth / b.w, maxHeight / b.h);
+    const s = Math.min(maxWidth / b.w, maxHeight / b.h) * (state.headerLogoScale || 1);
     drawingContext.save();
     drawingContext.imageSmoothingEnabled = true;
     drawingContext.imageSmoothingQuality = "high";
@@ -1266,6 +1267,7 @@ try {
     if (typeof d.finalCaption === "string") state.finalCaption = d.finalCaption;
     if (["none", "white", "overlay-white"].includes(d.logoBackground)) state.logoBackground = d.logoBackground;
     if (typeof d.showArciMark === "boolean") state.showArciMark = d.showArciMark;
+    if (Number.isFinite(d.headerLogoScale)) state.headerLogoScale = Math.max(0.4, Math.min(2.5, d.headerLogoScale));
     _pendingPackageAssets = pkg.assets || null;
     localStorage.removeItem(PACKAGE_RESTORE_KEY);
     try {
@@ -1626,6 +1628,7 @@ function makePackage() {
       finalCaption: state.finalCaption || "2026 edition",
       logoBackground: state.logoBackground,
       showArciMark: state.showArciMark,
+      headerLogoScale: state.headerLogoScale,
     },
     assets: {
       logos: (state.logos || []).map(p5ImageToDataURL),
@@ -2065,7 +2068,25 @@ function installLogoUploadControls() {
       state.showArciMark = false;
       input.value = "";
     });
-    arci.append(label, input, remove);
+    const sizeWrap = document.createElement("div");
+    sizeWrap.className = "field";
+    sizeWrap.style.marginTop = "10px";
+    const sizeLabel = document.createElement("label");
+    sizeLabel.textContent = "DIMENSIONE LOGO IN ALTO A DESTRA";
+    const sizeSlider = document.createElement("input");
+    sizeSlider.type = "range";
+    sizeSlider.min = "40";
+    sizeSlider.max = "250";
+    sizeSlider.step = "5";
+    sizeSlider.value = String(Math.round((state.headerLogoScale || 1) * 100));
+    const sizeValue = document.createElement("span");
+    sizeValue.textContent = sizeSlider.value + "%";
+    sizeSlider.addEventListener("input", () => {
+      state.headerLogoScale = Number(sizeSlider.value) / 100;
+      sizeValue.textContent = sizeSlider.value + "%";
+    });
+    sizeWrap.append(sizeLabel, sizeSlider, sizeValue);
+    arci.append(label, input, sizeWrap, remove);
     logoSection.appendChild(arci);
   }
   if (!logoSection.querySelector("#final-caption-input")) {
