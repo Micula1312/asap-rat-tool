@@ -1247,6 +1247,7 @@ try {
     if (Array.isArray(d.logoIcons)) state.logoIcons = [...d.logoIcons];
     if (typeof d.finalCaption === "string") state.finalCaption = d.finalCaption;
     if (["none", "white", "overlay-white"].includes(d.logoBackground)) state.logoBackground = d.logoBackground;
+    if (typeof d.showArciMark === "boolean") state.showArciMark = d.showArciMark;
     _pendingPackageAssets = pkg.assets || null;
     localStorage.removeItem(PACKAGE_RESTORE_KEY);
     try {
