@@ -919,21 +919,39 @@ function generateRatStarts() {
 
 function drawArciMark() {
   if (!state.showArciMark) return;
-  const x = 982,
-    y = 74,
-    maxSize = 92;
+  const x = 974, y = 77, maxWidth = 142, maxHeight = 112;
   push();
   translate(x, y);
   if (state.arciLogo) {
-    const img = state.arciLogo,
-      s = min(maxSize / img.width, maxSize / img.height);
+    const img = state.arciLogo;
+    // Trim transparent padding from uploaded PNGs so the actual logo
+    // fills the allotted header area, regardless of export canvas size.
+    if (!img._ratVisibleBounds) {
+      img.loadPixels();
+      let minX = img.width, minY = img.height, maxX = -1, maxY = -1;
+      const density = img.pixelDensity ? img.pixelDensity() : 1;
+      const pw = img.width * density, ph = img.height * density;
+      for (let py = 0; py < ph; py += density) {
+        for (let px = 0; px < pw; px += density) {
+          if (img.pixels[(py * pw + px) * 4 + 3] > 12) {
+            const xx = Math.floor(px / density), yy = Math.floor(py / density);
+            minX = Math.min(minX, xx); minY = Math.min(minY, yy);
+            maxX = Math.max(maxX, xx); maxY = Math.max(maxY, yy);
+          }
+        }
+      }
+      img._ratVisibleBounds = maxX >= 0
+        ? { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 }
+        : { x: 0, y: 0, w: img.width, h: img.height };
+    }
+    const b = img._ratVisibleBounds;
+    const s = Math.min(maxWidth / b.w, maxHeight / b.h);
     drawingContext.save();
     drawingContext.imageSmoothingEnabled = true;
     drawingContext.imageSmoothingQuality = "high";
-    imageMode(CENTER);
-    if (state.logoBackground === "overlay-white") drawingContext.drawImage(whiteLogoImage(img), -img.width * s / 2, -img.height * s / 2, img.width * s, img.height * s);
-    else image(img, 0, 0, img.width * s, img.height * s);
-    imageMode(CORNER);
+    const source = state.logoBackground === "overlay-white" ? whiteLogoImage(img) : img.canvas;
+    drawingContext.drawImage(source, b.x, b.y, b.w, b.h,
+      -b.w * s / 2, -b.h * s / 2, b.w * s, b.h * s);
     drawingContext.restore();
   } else {
     noStroke();
