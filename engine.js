@@ -809,6 +809,7 @@ state.logoIcons = ["🍒", "🍋", "🍇"];
 state.arciLogo = null;
 state.showArciMark = true;
 state.headerLogoScale = 1;
+state.headerLogoRotation = 0;
 
 state.finalCaption = "2026 edition";
 
@@ -923,6 +924,7 @@ function drawArciMark() {
   const x = 974, y = 49, maxWidth = 118, maxHeight = 65;
   push();
   translate(x, y);
+  rotate(radians(state.headerLogoRotation || 0));
   if (state.arciLogo) {
     const img = state.arciLogo;
     // Trim transparent padding from uploaded PNGs so the actual logo
@@ -1268,6 +1270,7 @@ try {
     if (["none", "white", "overlay-white"].includes(d.logoBackground)) state.logoBackground = d.logoBackground;
     if (typeof d.showArciMark === "boolean") state.showArciMark = d.showArciMark;
     if (Number.isFinite(d.headerLogoScale)) state.headerLogoScale = Math.max(0.4, Math.min(2.5, d.headerLogoScale));
+    if (Number.isFinite(d.headerLogoRotation)) state.headerLogoRotation = Math.max(-45, Math.min(45, d.headerLogoRotation));
     _pendingPackageAssets = pkg.assets || null;
     localStorage.removeItem(PACKAGE_RESTORE_KEY);
     try {
@@ -1629,6 +1632,7 @@ function makePackage() {
       logoBackground: state.logoBackground,
       showArciMark: state.showArciMark,
       headerLogoScale: state.headerLogoScale,
+      headerLogoRotation: state.headerLogoRotation,
     },
     assets: {
       logos: (state.logos || []).map(p5ImageToDataURL),
@@ -2086,7 +2090,34 @@ function installLogoUploadControls() {
       sizeValue.textContent = sizeSlider.value + "%";
     });
     sizeWrap.append(sizeLabel, sizeSlider, sizeValue);
-    arci.append(label, input, sizeWrap, remove);
+    const rotateWrap = document.createElement("div");
+    rotateWrap.className = "field";
+    rotateWrap.style.marginTop = "10px";
+    const rotateLabel = document.createElement("label");
+    rotateLabel.textContent = "ROTAZIONE LOGO IN ALTO A DESTRA";
+    const rotateSlider = document.createElement("input");
+    rotateSlider.type = "range";
+    rotateSlider.min = "-45";
+    rotateSlider.max = "45";
+    rotateSlider.step = "1";
+    rotateSlider.value = String(state.headerLogoRotation || 0);
+    const rotateValue = document.createElement("span");
+    rotateValue.textContent = rotateSlider.value + "°";
+    rotateSlider.addEventListener("input", () => {
+      state.headerLogoRotation = Number(rotateSlider.value);
+      rotateValue.textContent = rotateSlider.value + "°";
+    });
+    const resetRotation = document.createElement("button");
+    resetRotation.type = "button";
+    resetRotation.className = "fix-button secondary";
+    resetRotation.textContent = "AZZERA ROTAZIONE";
+    resetRotation.addEventListener("click", () => {
+      state.headerLogoRotation = 0;
+      rotateSlider.value = "0";
+      rotateValue.textContent = "0°";
+    });
+    rotateWrap.append(rotateLabel, rotateSlider, rotateValue, resetRotation);
+    arci.append(label, input, sizeWrap, rotateWrap, remove);
     logoSection.appendChild(arci);
   }
   if (!logoSection.querySelector("#final-caption-input")) {
