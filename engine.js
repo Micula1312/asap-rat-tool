@@ -807,6 +807,7 @@ const FINAL_CAPTION_STORAGE_KEY = "ex-casa-final-caption-v1";
 state.logoIcons = ["🍒", "🍋", "🍇"];
 
 state.arciLogo = null;
+state.showArciMark = true;
 
 state.finalCaption = "2026 edition";
 
@@ -917,6 +918,7 @@ function generateRatStarts() {
 }
 
 function drawArciMark() {
+  if (!state.showArciMark) return;
   const x = 982,
     y = 74,
     maxSize = 92;
@@ -1604,6 +1606,7 @@ function makePackage() {
       logoIcons: [...(state.logoIcons || [])],
       finalCaption: state.finalCaption || "2026 edition",
       logoBackground: state.logoBackground,
+      showArciMark: state.showArciMark,
     },
     assets: {
       logos: (state.logos || []).map(p5ImageToDataURL),
@@ -2027,12 +2030,23 @@ function installLogoUploadControls() {
           ev.target.result,
           (img) => {
             state.arciLogo = img;
+            state.showArciMark = true;
           },
           (err) => console.warn("ARCI image load", err),
         );
       reader.readAsDataURL(file);
     });
-    arci.append(label, input);
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "fix-button secondary";
+    remove.textContent = "RIMUOVI LOGO IN ALTO A DESTRA";
+    remove.style.marginTop = "8px";
+    remove.addEventListener("click", () => {
+      state.arciLogo = null;
+      state.showArciMark = false;
+      input.value = "";
+    });
+    arci.append(label, input, remove);
     logoSection.appendChild(arci);
   }
   if (!logoSection.querySelector("#final-caption-input")) {
