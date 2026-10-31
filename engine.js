@@ -2444,17 +2444,28 @@ function buildEditor() {
 function drawIdentity() {
   if (!state.showBrandBlock) return;
   const ink = isDark(state.bgColor) ? COLORS.white : COLORS.black;
+  // Brand wordmark: consistent round black outline and crisp pink offset.
+  // Keep both layers at the exact same font metrics for a coherent silhouette.
+  push();
   textAlign(LEFT, TOP);
   textFont("Helvetica");
   textStyle(BOLD);
-  noStroke();
-  fill(COLORS.pink);
   textSize(42);
+  drawingContext.lineJoin = "round";
+  drawingContext.lineCap = "round";
+  drawingContext.miterLimit = 2;
+  stroke(COLORS.black);
+  strokeWeight(3.5);
+  fill(COLORS.pink);
   text(state.title || "", 61, 35);
   stroke(COLORS.black);
-  strokeWeight(5);
+  strokeWeight(3.5);
   fill(COLORS.white);
   text(state.title || "", 55, 29);
+  pop();
+  textAlign(LEFT, TOP);
+  textFont("Helvetica");
+  textStyle(BOLD);
   noStroke();
   fill(ink);
   textSize(28);
