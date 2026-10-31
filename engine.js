@@ -1171,6 +1171,12 @@ function drawReelRats(ctx) {
   if (t >= 1 || sequence.elapsed >= BUILD_END_MS) return;
   const offsetY = (1920 - BASE_H) / 2;
   ctx.save();
+  // Only paint the extra Reel bands. Inside the map the original p5 rats
+  // remain visible (also in the live preview) with their native emoji rendering.
+  ctx.beginPath();
+  ctx.rect(0, 0, 1080, offsetY);
+  ctx.rect(0, offsetY + BASE_H, 1080, 1920 - offsetY - BASE_H);
+  ctx.clip();
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.font = `${48 * state.scales.rat}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
@@ -1463,7 +1469,7 @@ function drawAnimatedSequence() {
       roundedRoute(buildRatRoute(i), 20),
       ratFluidEase(local),
     );
-    if (state._recordFormat !== "reel") drawRat(pos.x, pos.y, i);
+    drawRat(pos.x, pos.y, i);
   }
   if (t >= popupStart) drawMonthlyAgendaCard(popupEase(t, popupStart));
 }
