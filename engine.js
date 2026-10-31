@@ -1160,6 +1160,43 @@ function copyArtboardToTargets() {
     1080,
     1350,
   );
+  drawReelRats(story.ctx);
+}
+
+// Reel-specific rat layer: draw directly on the full 1080×1920 export,
+// rather than clipping the rats inside the centered 4:5 artboard.
+function drawReelRats(ctx) {
+  if (state._recordFormat !== "reel" || sequence.mode !== "rec") return;
+  const t = Math.max(0, Math.min(1, sequence.elapsed / SEQUENCE_MS));
+  if (t >= 1 || sequence.elapsed >= BUILD_END_MS) return;
+  const offsetY = (1920 - BASE_H) / 2;
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `${48 * state.scales.rat}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+  for (let i = 0; i < state.ratCount; i++) {
+    const delay = i * 0.025;
+    const finish = RAT_FIRST_FINISH + i * RAT_FINISH_STAGGER;
+    const local = Math.max(0, Math.min(1, (t - delay) / (finish - delay)));
+    const route = buildRatRoute(i);
+    if (!route.length) continue;
+    const side = state.ratStarts[i]?.side || "left";
+    const first = route[0];
+    const start = { x: first.x, y: first.y };
+    const margin = 110 + 48 * state.scales.rat;
+    if (side === "top") start.y = -offsetY - margin;
+    else if (side === "bottom") start.y = 1920 - offsetY + margin;
+    else if (side === "left") start.x = -margin;
+    else start.x = BASE_W + margin;
+    const path = roundedRoute([start, ...route], 20);
+    const pos = pointOnPolyline(path, ratFluidEase(local));
+    ctx.save();
+    ctx.translate(pos.x, pos.y + offsetY);
+    if (i % 2) ctx.scale(-1, 1);
+    ctx.fillText("🐀", 0, 0);
+    ctx.restore();
+  }
+  ctx.restore();
 }
 
 function recordCopyLoop() {
@@ -1426,7 +1463,7 @@ function drawAnimatedSequence() {
       roundedRoute(buildRatRoute(i), 20),
       ratFluidEase(local),
     );
-    drawRat(pos.x, pos.y, i);
+    if (state._recordFormat !== "reel") drawRat(pos.x, pos.y, i);
   }
   if (t >= popupStart) drawMonthlyAgendaCard(popupEase(t, popupStart));
 }
@@ -1701,6 +1738,7 @@ function loadPackageFile(file) {
 function startRecording(format = "post") {
   try {
     const isReel = format === "reel";
+    state._recordFormat = format;
     const target = ensureRecordTargets()[isReel ? 1 : 0];
     copyArtboardToTargets();
     state._recCheck = { started: true, mime: "video/mp4", files: 0, bytes: 0, errors: [] };
@@ -1719,7 +1757,7 @@ function startRecording(format = "post") {
       setStatus(`✓ MP4 ${isReel ? 'REEL 1080×1920' : 'POST 2160×2700'} · ${(blob.size / 1024 / 1024).toFixed(1)} MB · ${state.exportFolderName}`);
     }).catch((error) => {
       if (error.name !== "AbortError") { console.error(error); state._recCheck.errors.push(String(error.message || error)); setStatus(`MP4 ERROR · ${error.message || error}`); }
-    }).finally(() => { state._mp4Export = null; });
+    }).finally(() => { state._mp4Export = null; state._recordFormat = null; });
   } catch (e) {
     console.error(e); state._recCheck = { started: false, errors: [String(e.message || e)] }; setStatus(`MP4 ERROR · ${e.message || e}`);
   }
@@ -1730,7 +1768,7 @@ function stopRecording(save = true) {
     cancelAnimationFrame(state._recordRAF);
     state._recordRAF = null;
   }
-  if (!save && state._mp4Export) { state._mp4Export.cancel(); state._mp4Export = null; }
+  if (!save && state._mp4Export) { state._mp4Export.cancel(); state._mp4Export = null; state._recordFormat = null; }
 }
 
 function insertDynamicPlaceEditor(section, p, i) {
