@@ -1183,7 +1183,7 @@ function copyArtboardToTargets() {
 function drawReelRats(ctx) {
   if (state._recordFormat !== "reel" || sequence.mode !== "rec") return;
   const t = Math.max(0, Math.min(1, timelineElapsed() / SEQUENCE_MS));
-  if (t >= 1 || sequence.elapsed >= BUILD_END_MS) return;
+  if (t >= 1 || sequence.elapsed >= BUILD_END_MS + highlightExtraMs()) return;
   const offsetY = (1920 - BASE_H) / 2;
   ctx.save();
   // Keep exactly the same position as the p5 rat inside the centered map.
