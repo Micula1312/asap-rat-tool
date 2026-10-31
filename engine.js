@@ -1020,11 +1020,8 @@ function drawMonthlyAgendaCard(a) {
     // Spotlight the event TITLES only, after the popup settles and BEFORE logos animate.
     // The text stays black and legible; the glow uses the existing fuchsia palette.
     const running = sequence.mode === "play" || sequence.mode === "rec";
-    const seqT = sequence.elapsed / SEQUENCE_MS;
-    const highlightStart = 0.515;
-    const highlightEnd = 0.715; // logo hearts begin at 0.73
-    const slot = (highlightEnd - highlightStart) / Math.max(1, state.popups.length);
-    const phase = (seqT - highlightStart - index * slot) / slot;
+    const slot = 1000;
+    const phase = (sequence.elapsed - HIGHLIGHT_START_MS - index * slot) / slot;
     const spotlight = running && phase >= 0 && phase < 1
       ? Math.pow(Math.sin(Math.PI * phase), 1.3) : 0;
     if (spotlight > 0) {
@@ -1185,7 +1182,7 @@ function copyArtboardToTargets() {
 // rather than clipping the rats inside the centered 4:5 artboard.
 function drawReelRats(ctx) {
   if (state._recordFormat !== "reel" || sequence.mode !== "rec") return;
-  const t = Math.max(0, Math.min(1, sequence.elapsed / SEQUENCE_MS));
+  const t = Math.max(0, Math.min(1, timelineElapsed() / SEQUENCE_MS));
   if (t >= 1 || sequence.elapsed >= BUILD_END_MS) return;
   const offsetY = (1920 - BASE_H) / 2;
   ctx.save();
@@ -1219,6 +1216,20 @@ function recordCopyLoop() {
 }
 
 const FINAL_HOLD_MS = 2500;
+const HIGHLIGHT_START_MS = SEQUENCE_MS * 0.515;
+const HIGHLIGHT_END_MS = SEQUENCE_MS * 0.715;
+function highlightExtraMs() {
+  return Math.max(0, state.popups.length * 1000 - (HIGHLIGHT_END_MS - HIGHLIGHT_START_MS));
+}
+function timelineElapsed() {
+  const extra = highlightExtraMs(), actual = sequence.elapsed;
+  if (actual <= HIGHLIGHT_START_MS) return actual;
+  const end = HIGHLIGHT_END_MS + extra;
+  if (actual < end) return HIGHLIGHT_START_MS + (actual - HIGHLIGHT_START_MS) * (HIGHLIGHT_END_MS - HIGHLIGHT_START_MS) / (end - HIGHLIGHT_START_MS);
+  return actual - extra;
+}
+function totalSequenceMs() { return TOTAL_SEQUENCE_MS + highlightExtraMs(); }
+
 
 const BUILD_END_MS = SEQUENCE_MS * 0.86;
 
@@ -1350,8 +1361,8 @@ function draw() {
   let shouldFinish = false;
   if (active) {
     sequence.elapsed = millis() - sequence.startedAt;
-    if (sequence.elapsed >= TOTAL_SEQUENCE_MS) {
-      sequence.elapsed = TOTAL_SEQUENCE_MS;
+    if (sequence.elapsed >= totalSequenceMs()) {
+      sequence.elapsed = totalSequenceMs();
       shouldFinish = true;
     }
   }
@@ -1363,17 +1374,17 @@ function draw() {
   push();
   translate(view.ox, view.oy);
   scale(view.s);
-  if (active && sequence.elapsed >= BUILD_END_MS + FINAL_HOLD_MS) {
+  if (active && sequence.elapsed >= BUILD_END_MS + FINAL_HOLD_MS + highlightExtraMs()) {
     const actualElapsed = sequence.elapsed;
     const local = constrain(
-      (actualElapsed - (BUILD_END_MS + FINAL_HOLD_MS)) / FINAL_SCENE_MS,
+      (actualElapsed - (BUILD_END_MS + FINAL_HOLD_MS + highlightExtraMs())) / FINAL_SCENE_MS,
       0,
       1,
     );
     sequence.elapsed = BUILD_END_MS + local * FINAL_SCENE_MS;
     drawStrobeFinal();
     sequence.elapsed = actualElapsed;
-  } else if (active && sequence.elapsed >= BUILD_END_MS) {
+  } else if (active && sequence.elapsed >= BUILD_END_MS + highlightExtraMs()) {
     drawBackground();
     drawBlockedDots();
     drawIdentity();
@@ -1478,7 +1489,7 @@ function animatedRatPosition(i, local, reel = false) {
 }
 
 function drawAnimatedSequence() {
-  const t = constrain(sequence.elapsed / SEQUENCE_MS, 0, 1),
+  const t = constrain(timelineElapsed() / SEQUENCE_MS, 0, 1),
     popupStart = 0.43,
     logos = 0.73;
   drawLogoHeartSequence(t, logos);
@@ -1792,7 +1803,7 @@ function startRecording(format = "post") {
       scale: isReel ? 1 : 2,
       fps: 30,
       bitrate: isReel ? 16000000 : 20000000,
-      duration: TOTAL_SEQUENCE_MS,
+      duration: totalSequenceMs(),
       onProgress: (progress) => setStatus(`● MP4 H.264 · ${Math.round(progress * 100)}%`),
     });
     recordCopyLoop();
