@@ -1017,20 +1017,26 @@ function drawMonthlyAgendaCard(a) {
     noStroke(); fill(COLORS.black); textAlign(CENTER, CENTER);
     text(pillText, 24 + pillW / 2, pillY + pillH / 2 + 1);
     const textX = 250, textW = w - textX - 24;
-    // One-by-one event spotlight during the still hold before the final strobe.
-    const inHold = (sequence.mode === "play" || sequence.mode === "rec") &&
-      sequence.elapsed >= BUILD_END_MS && sequence.elapsed < BUILD_END_MS + FINAL_HOLD_MS;
-    const slot = FINAL_HOLD_MS / Math.max(1, state.popups.length);
-    const localHold = (sequence.elapsed - BUILD_END_MS - index * slot) / slot;
-    const spotlight = inHold && localHold >= 0 && localHold < 1
-      ? Math.min(1, localHold * 7, (1 - localHold) * 7) : 0;
+    // Spotlight the event TITLES only, after the popup settles and BEFORE logos animate.
+    // The text stays black and legible; the glow is a subtle pale-yellow accent.
+    const running = sequence.mode === "play" || sequence.mode === "rec";
+    const seqT = sequence.elapsed / SEQUENCE_MS;
+    const highlightStart = 0.515;
+    const highlightEnd = 0.715; // logo hearts begin at 0.73
+    const slot = (highlightEnd - highlightStart) / Math.max(1, state.popups.length);
+    const phase = (seqT - highlightStart - index * slot) / slot;
+    const spotlight = running && phase >= 0 && phase < 1
+      ? Math.pow(Math.sin(Math.PI * phase), 1.3) : 0;
     if (spotlight > 0) {
       noStroke();
-      fill(255, 97, 182, 42 + spotlight * 125);
-      rect(textX - 8, rowY + 8, textW + 12, row.titleLines * row.titleLeading + 11, 7);
+      fill(226, 255, 0, 38 + spotlight * 105);
+      rect(textX - 5, rowY + 10, textW + 8, row.titleLines * row.titleLeading + 5, 5);
     }
-    textAlign(LEFT, TOP); textStyle(BOLD); textSize((state.recapTitleSize || 22) * (1 + spotlight * 0.11));
-    text(item.title || "", textX, rowY + 14, textW, row.titleLines * row.titleLeading);
+    textAlign(LEFT, TOP);
+    textStyle(BOLD);
+    textSize((state.recapTitleSize || 22) * (1 + spotlight * 0.055));
+    fill(COLORS.black);
+    text(item.title || "", textX, rowY + 14, textW, row.titleLines * row.titleLeading + 5);
     textStyle(NORMAL); textSize(state.recapBodySize || 15);
     text(item.body || "", textX, rowY + 18 + row.titleLines * row.titleLeading, textW, row.bodyLines * row.bodyLeading + 4);
     rowY += row.h;
