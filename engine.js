@@ -2432,6 +2432,16 @@ function buildEditor() {
   agendaMeta.id("agenda-coords");
   agendaMeta.class("coords");
   agendaMeta.parent(popSec);
+  const centerPopupButton = createButton("⊕ CENTRA POPUP");
+  centerPopupButton.class("fix-button secondary");
+  centerPopupButton.parent(popSec);
+  centerPopupButton.mousePressed(() => {
+    const sz = monthlyAgendaSize();
+    state.popupPositions[0].x = (BASE_W - sz.w) / 2;
+    state.popupPositions[0].y = (BASE_H - sz.h) / 2;
+    const coords = document.getElementById("agenda-coords");
+    if (coords) coords.textContent = `popup x ${round(state.popupPositions[0].x)} · y ${round(state.popupPositions[0].y)}`;
+  });
   popupEditorEl = createDiv();
   popupEditorEl.parent(popSec);
   refreshPopupEditors();
