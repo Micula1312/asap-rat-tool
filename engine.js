@@ -1017,7 +1017,19 @@ function drawMonthlyAgendaCard(a) {
     noStroke(); fill(COLORS.black); textAlign(CENTER, CENTER);
     text(pillText, 24 + pillW / 2, pillY + pillH / 2 + 1);
     const textX = 250, textW = w - textX - 24;
-    textAlign(LEFT, TOP); textStyle(BOLD); textSize(state.recapTitleSize || 22);
+    // One-by-one event spotlight during the still hold before the final strobe.
+    const inHold = (sequence.mode === "play" || sequence.mode === "rec") &&
+      sequence.elapsed >= BUILD_END_MS && sequence.elapsed < BUILD_END_MS + FINAL_HOLD_MS;
+    const slot = FINAL_HOLD_MS / Math.max(1, state.popups.length);
+    const localHold = (sequence.elapsed - BUILD_END_MS - index * slot) / slot;
+    const spotlight = inHold && localHold >= 0 && localHold < 1
+      ? Math.min(1, localHold * 7, (1 - localHold) * 7) : 0;
+    if (spotlight > 0) {
+      noStroke();
+      fill(255, 97, 182, 42 + spotlight * 125);
+      rect(textX - 8, rowY + 8, textW + 12, row.titleLines * row.titleLeading + 11, 7);
+    }
+    textAlign(LEFT, TOP); textStyle(BOLD); textSize((state.recapTitleSize || 22) * (1 + spotlight * 0.11));
     text(item.title || "", textX, rowY + 14, textW, row.titleLines * row.titleLeading);
     textStyle(NORMAL); textSize(state.recapBodySize || 15);
     text(item.body || "", textX, rowY + 18 + row.titleLines * row.titleLeading, textW, row.bodyLines * row.bodyLeading + 4);
@@ -1171,8 +1183,8 @@ function drawReelRats(ctx) {
   if (t >= 1 || sequence.elapsed >= BUILD_END_MS) return;
   const offsetY = (1920 - BASE_H) / 2;
   ctx.save();
-  // Only paint the extra Reel bands. Inside the map the original p5 rats
-  // remain visible (also in the live preview) with their native emoji rendering.
+  // Keep exactly the same position as the p5 rat inside the centered map.
+  // Clip this extra layer to the upper/lower Reel bands only.
   ctx.beginPath();
   ctx.rect(0, 0, 1080, offsetY);
   ctx.rect(0, offsetY + BASE_H, 1080, 1920 - offsetY - BASE_H);
@@ -1184,18 +1196,7 @@ function drawReelRats(ctx) {
     const delay = i * 0.025;
     const finish = RAT_FIRST_FINISH + i * RAT_FINISH_STAGGER;
     const local = Math.max(0, Math.min(1, (t - delay) / (finish - delay)));
-    const route = buildRatRoute(i);
-    if (!route.length) continue;
-    const side = state.ratStarts[i]?.side || "left";
-    const first = route[0];
-    const start = { x: first.x, y: first.y };
-    const margin = 110 + 48 * state.scales.rat;
-    if (side === "top") start.y = -offsetY - margin;
-    else if (side === "bottom") start.y = 1920 - offsetY + margin;
-    else if (side === "left") start.x = -margin;
-    else start.x = BASE_W + margin;
-    const path = roundedRoute([start, ...route], 20);
-    const pos = pointOnPolyline(path, ratFluidEase(local));
+    const pos = animatedRatPosition(i, local, true);
     ctx.save();
     ctx.translate(pos.x, pos.y + offsetY);
     if (i % 2) ctx.scale(-1, 1);
@@ -1456,6 +1457,20 @@ function roundedRoute(points, radius = 18) {
 const RAT_FIRST_FINISH = 0.335,
   RAT_FINISH_STAGGER = 0.018;
 
+function animatedRatPosition(i, local, reel = false) {
+  const route = buildRatRoute(i);
+  if (!reel || !route.length) return pointOnPolyline(roundedRoute(route, 20), ratFluidEase(local));
+  const first = route[0], side = state.ratStarts[i]?.side || "left";
+  const start = { x: first.x, y: first.y };
+  const margin = 110 + 48 * state.scales.rat;
+  const extraY = (1920 - BASE_H) / 2;
+  if (side === "top") start.y = -extraY - margin;
+  else if (side === "bottom") start.y = 1920 - extraY + margin;
+  else if (side === "left") start.x = -margin;
+  else start.x = BASE_W + margin;
+  return pointOnPolyline(roundedRoute([start, ...route], 20), ratFluidEase(local));
+}
+
 function drawAnimatedSequence() {
   const t = constrain(sequence.elapsed / SEQUENCE_MS, 0, 1),
     popupStart = 0.43,
@@ -1465,10 +1480,7 @@ function drawAnimatedSequence() {
     const delay = i * 0.025,
       finish = RAT_FIRST_FINISH + i * RAT_FINISH_STAGGER,
       local = constrain((t - delay) / (finish - delay), 0, 1);
-    const pos = pointOnPolyline(
-      roundedRoute(buildRatRoute(i), 20),
-      ratFluidEase(local),
-    );
+    const pos = animatedRatPosition(i, local, state._recordFormat === "reel");
     drawRat(pos.x, pos.y, i);
   }
   if (t >= popupStart) drawMonthlyAgendaCard(popupEase(t, popupStart));
