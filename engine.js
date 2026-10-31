@@ -1018,7 +1018,7 @@ function drawMonthlyAgendaCard(a) {
     text(pillText, 24 + pillW / 2, pillY + pillH / 2 + 1);
     const textX = 250, textW = w - textX - 24;
     // Spotlight the event TITLES only, after the popup settles and BEFORE logos animate.
-    // The text stays black and legible; the glow is a subtle pale-yellow accent.
+    // The text stays black and legible; the glow uses the existing fuchsia palette.
     const running = sequence.mode === "play" || sequence.mode === "rec";
     const seqT = sequence.elapsed / SEQUENCE_MS;
     const highlightStart = 0.515;
@@ -1029,7 +1029,7 @@ function drawMonthlyAgendaCard(a) {
       ? Math.pow(Math.sin(Math.PI * phase), 1.3) : 0;
     if (spotlight > 0) {
       noStroke();
-      fill(226, 255, 0, 38 + spotlight * 105);
+      fill(255, 97, 182, 30 + spotlight * 95);
       rect(textX - 5, rowY + 10, textW + 8, row.titleLines * row.titleLeading + 5, 5);
     }
     textAlign(LEFT, TOP);
@@ -1713,21 +1713,42 @@ function makePackage() {
 }
 
 async function savePackage() {
+  if (sequence.mode === "play" || sequence.mode === "rec") {
+    setStatus("FERMA PLAY/REC PRIMA DI SALVARE JSON");
+    return;
+  }
   const oldMode = sequence.mode;
-  sequence.mode = "final";
-  redraw();
-  setTimeout(async () => {
-    const pkg = makePackage(),
-      slug = packageSlug(),
-      jsonBlob = new Blob([JSON.stringify(pkg, null, 2)], {
-        type: "application/json",
-      });
-    await writeBlobToExport(jsonBlob, `${slug}-package.json`);
+  try {
+    // Capture a complete, current snapshot; restore the editing mode even on errors.
+    sequence.mode = "final";
+    redraw();
+    const pkg = makePackage();
+    if (!pkg.data || !Array.isArray(pkg.data.popups) ||
+        !Array.isArray(pkg.data.places) || !Array.isArray(pkg.data.rats) ||
+        !Array.isArray(pkg.assets.logos)) {
+      throw new Error("Pacchetto incompleto");
+    }
+    const serialized = JSON.stringify(pkg, null, 2);
+    const parsed = JSON.parse(serialized);
+    if (parsed.data.popups.length !== state.popups.length ||
+        parsed.data.places.length !== state.places.length ||
+        parsed.assets.logos.length !== state.logos.length) {
+      throw new Error("Verifica JSON fallita");
+    }
+    const slug = packageSlug();
+    await writeBlobToExport(new Blob([serialized], {type:"application/json"}), `${slug}-package.json`);
     await writeDataURLToExport(pkg.assets.previewPNG, `${slug}-post.png`);
-    sequence.mode =
-      oldMode === "play" || oldMode === "rec" ? "compose" : oldMode;
-    if (statusEl) setStatus(`✓ PACCHETTO + PNG → ${state.exportFolderName}`);
-  }, 50);
+    // The downloaded JSON is also the most recently saved local project.
+    try { localStorage.setItem(LAST_LOADED_PACKAGE_KEY, serialized); }
+    catch (storageError) { console.warn("JSON local backup unavailable", storageError); }
+    setStatus(`✓ JSON COMPLETO + PNG → ${state.exportFolderName}`);
+  } catch (error) {
+    console.error("save package", error);
+    setStatus(`ERRORE SALVATAGGIO: ${error.message || error}`);
+  } finally {
+    sequence.mode = oldMode;
+    redraw();
+  }
 }
 
 function loadPackageFile(file) {
