@@ -1,5 +1,5 @@
 (function(global){
-  const DEFAULT_FPS=30,DEFAULT_BITRATE=10000000;
+  const DEFAULT_FPS=30,DEFAULT_BITRATE=20000000;
   function nativeMP4Mime(canvas){
     if(!global.MediaRecorder||!canvas.captureStream)return null;
     const types=['video/mp4;codecs=avc1.42E01E','video/mp4;codecs=avc1','video/mp4;codecs=h264','video/mp4'];
@@ -77,14 +77,23 @@
       syncFrame=()=>{scaleContext.clearRect(0,0,canvas.width,canvas.height);scaleContext.drawImage(sourceCanvas,0,0,canvas.width,canvas.height)};
     }
     const exportOptions={...options,canvas,syncFrame};
+    // Prefer WebCodecs: MediaRecorder may silently ignore requested bitrate on detailed grey patterns.
     const nativeMime=nativeMP4Mime(canvas);
-    if(nativeMime)return startNativeMP4(exportOptions,nativeMime);
+    if(!global.VideoEncoder||!global.VideoFrame||!global.Mp4Muxer){
+      if(nativeMime)return startNativeMP4(exportOptions,nativeMime);
+      throw new Error('Export MP4 H.264 non supportato da questo browser');
+    }
     const duration=Math.max(1,Number(options.duration)||5000),fps=options.fps||DEFAULT_FPS,bitrate=options.bitrate||DEFAULT_BITRATE;
     let cancelled=false,raf=0;
     const cancel=()=>{cancelled=true;if(raf)cancelAnimationFrame(raf)};
     const promise=(async()=>{
       if(!global.Mp4Muxer)throw new Error('Modulo MP4 non caricato');
-      const width=canvas.width,height=canvas.height,config=await pickConfig(width,height,fps,bitrate);
+      const width=canvas.width,height=canvas.height;
+      let config;
+      try{config=await pickConfig(width,height,fps,bitrate)}catch(error){
+        if(nativeMime)return await startNativeMP4(exportOptions,nativeMime).promise;
+        throw error;
+      }
       const target=new Mp4Muxer.ArrayBufferTarget();
       const muxer=new Mp4Muxer.Muxer({target,video:{codec:'avc',width,height,frameRate:fps},fastStart:'in-memory',firstTimestampBehavior:'offset'});
       let encoderError=null;
@@ -98,9 +107,11 @@
           if(encoderError){reject(encoderError);return}
           if(syncFrame)syncFrame();
           const expected=Math.min(total,Math.floor((now-started)/1000*fps)+1);
-          while(frameIndex<expected){
-            const frame=new VideoFrame(canvas,{timestamp:frameIndex*frameDuration,duration:frameDuration});
-            encoder.encode(frame,{keyFrame:frameIndex%(fps*2)===0});frame.close();frameIndex++;
+          // Never manufacture multiple frames from one unchanged canvas image.
+          // A dropped render frame is preferable to repeated copies of the same frame.
+          if(frameIndex<expected){
+            const frame=new VideoFrame(canvas,{timestamp:(expected-1)*frameDuration,duration:frameDuration});
+            encoder.encode(frame,{keyFrame:frameIndex===0||(expected-1)%(fps*2)===0});frame.close();frameIndex=expected;
           }
           if(frameIndex>=total){resolve();return}
           if(options.onProgress)options.onProgress(frameIndex/total);
