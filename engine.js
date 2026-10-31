@@ -1034,7 +1034,7 @@ function drawMonthlyAgendaCard(a) {
     }
     textAlign(LEFT, TOP);
     textStyle(BOLD);
-    textSize((state.recapTitleSize || 22) * (1 + spotlight * 0.055));
+    textSize((state.recapTitleSize || 22) * (1 + spotlight * 0.22));
     fill(COLORS.black);
     text(item.title || "", textX, rowY + 14, textW, row.titleLines * row.titleLeading + 5);
     textStyle(NORMAL); textSize(state.recapBodySize || 15);
