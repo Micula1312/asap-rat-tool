@@ -418,7 +418,7 @@ function setCompose() {
   setStatus("COMPOSE MODE");
 }
 
-function startSequence(rec) {
+function startSequence(rec, format = "post") {
   if (sequence.mode === "play" || sequence.mode === "rec") return;
   generateRatStarts();
   refreshRatEditors();
@@ -429,7 +429,7 @@ function startSequence(rec) {
   sequence.startedAt = millis();
   sequence.elapsed = 0;
   setStatus(rec ? "● RECORDING" : "PLAYING");
-  if (rec) startRecording();
+  if (rec) startRecording(format);
 }
 
 function finishSequence() {
@@ -1679,22 +1679,25 @@ function loadPackageFile(file) {
   reader.readAsText(file);
 }
 
-function startRecording() {
+function startRecording(format = "post") {
   try {
-    const post = ensureRecordTargets()[0];
+    const isReel = format === "reel";
+    const target = ensureRecordTargets()[isReel ? 1 : 0];
     copyArtboardToTargets();
     state._recCheck = { started: true, mime: "video/mp4", files: 0, bytes: 0, errors: [] };
     state._mp4Export = IGExport.startMP4({
-      canvas: post.canvas,
-      scale: 2,
+      canvas: target.canvas,
+      scale: isReel ? 1 : 2,
+      fps: 30,
+      bitrate: isReel ? 16000000 : 20000000,
       duration: TOTAL_SEQUENCE_MS,
       onProgress: (progress) => setStatus(`● MP4 H.264 · ${Math.round(progress * 100)}%`),
     });
     recordCopyLoop();
     state._mp4Export.promise.then(async (blob) => {
-      await writeBlobToExport(blob, `ex-casa-post01-animation-${Date.now()}.mp4`);
+      await writeBlobToExport(blob, `ex-casa-post01-${isReel ? 'reel-1080x1920' : 'animation-2160x2700'}-${Date.now()}.mp4`);
       state._recCheck.files = 1; state._recCheck.bytes = blob.size;
-      setStatus(`✓ MP4 POST 2160×2700 · ${(blob.size / 1024 / 1024).toFixed(1)} MB · ${state.exportFolderName}`);
+      setStatus(`✓ MP4 ${isReel ? 'REEL 1080×1920' : 'POST 2160×2700'} · ${(blob.size / 1024 / 1024).toFixed(1)} MB · ${state.exportFolderName}`);
     }).catch((error) => {
       if (error.name !== "AbortError") { console.error(error); state._recCheck.errors.push(String(error.message || error)); setStatus(`MP4 ERROR · ${error.message || error}`); }
     }).finally(() => { state._mp4Export = null; });
@@ -2311,7 +2314,8 @@ function buildEditor() {
   row.parent(controls);
   makeControlButton(row, "COMPOSE", setCompose);
   makeControlButton(row, "▶ PLAY", () => startSequence(false));
-  makeControlButton(row, "MP4 POST", () => startSequence(true));
+  makeControlButton(row, "MP4 POST · 4:5", () => startSequence(true, "post"));
+  makeControlButton(row, "MP4 REEL · 9:16", () => startSequence(true, "reel"));
   statusEl = createDiv("COMPOSE MODE");
   statusEl.class("rec-status");
   statusEl.parent(controls);
