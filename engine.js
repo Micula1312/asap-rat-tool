@@ -1177,6 +1177,7 @@ const FINAL_SCENE_MS = SEQUENCE_MS - BUILD_END_MS;
 const TOTAL_SEQUENCE_MS = BUILD_END_MS + FINAL_HOLD_MS + FINAL_SCENE_MS;
 
 const PACKAGE_RESTORE_KEY = "ex-casa-package-restore-v1";
+const LAST_LOADED_PACKAGE_KEY = "ex-casa-last-loaded-json-v1";
 
 state.exportDirectoryHandle = null;
 
@@ -1248,7 +1249,7 @@ async function writeDataURLToExport(dataURL, filename) {
 let _pendingPackageAssets = null;
 
 try {
-  const raw = localStorage.getItem(PACKAGE_RESTORE_KEY);
+  const raw = localStorage.getItem(PACKAGE_RESTORE_KEY) || localStorage.getItem(LAST_LOADED_PACKAGE_KEY);
   if (raw) {
     const pkg = JSON.parse(raw),
       d = pkg?.data || {};
@@ -1676,7 +1677,17 @@ function loadPackageFile(file) {
       const pkg = JSON.parse(reader.result);
       if (pkg?.type !== "ex-casa-rat-tool-package" || !pkg.data)
         throw new Error("Pacchetto non riconosciuto");
-      localStorage.setItem(PACKAGE_RESTORE_KEY, JSON.stringify(pkg));
+      const serialized = JSON.stringify(pkg);
+      // Persist the most recently imported JSON, including its assets, across reloads.
+      // Keep the previous saved version intact if browser storage is full.
+      try {
+        localStorage.setItem(LAST_LOADED_PACKAGE_KEY, serialized);
+        localStorage.removeItem(PACKAGE_RESTORE_KEY);
+      } catch (storageError) {
+        console.warn("last JSON storage", storageError);
+        alert("Memoria del browser piena: il JSON verrà caricato, ma potrebbe non restare salvato. Riduci le immagini o libera spazio.");
+        try { localStorage.setItem(PACKAGE_RESTORE_KEY, serialized); } catch (_) { return; }
+      }
       location.reload();
     } catch (e) {
       console.error(e);
