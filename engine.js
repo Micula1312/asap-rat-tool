@@ -55,6 +55,8 @@ const state = {
   footer: "© ASAP RAT ENGINE",
   agendaTitle: "OTTOBRE 2026",
   agendaSubtitle: "Recap degli eventi del mese in Casetta",
+  recapTitleSize: 22,
+  recapBodySize: 15,
   scales: { popup: 1, label: 2, rat: 1 },
   popups: [
     {
@@ -690,9 +692,11 @@ function popupLineCount(value, maxWidth, fontName, fontSize, style = NORMAL) {
 function monthlyAgendaSize() {
   const w = 820, headerH = 142, footerH = 22, textW = 548;
   const rows = state.popups.map((item) => {
-    const titleLines = popupLineCount(item.title, textW, "Helvetica", 22, BOLD);
-    const bodyLines = popupLineCount(item.body, textW, "Helvetica", 15);
-    return { titleLines, bodyLines, h: max(82, titleLines * 26 + bodyLines * 19 + 20) };
+    const titleSize = state.recapTitleSize || 22, bodySize = state.recapBodySize || 15;
+    const titleLeading = Math.ceil(titleSize * 1.2), bodyLeading = Math.ceil(bodySize * 1.3);
+    const titleLines = popupLineCount(item.title, textW, "Helvetica", titleSize, BOLD);
+    const bodyLines = popupLineCount(item.body, textW, "Helvetica", bodySize);
+    return { titleLines, bodyLines, titleLeading, bodyLeading, h: max(82, titleLines * titleLeading + bodyLines * bodyLeading + 25) };
   });
   return { w, h: max(390, headerH + rows.reduce((sum, row) => sum + row.h, 0) + footerH), headerH, rows };
 }
@@ -1013,10 +1017,10 @@ function drawMonthlyAgendaCard(a) {
     noStroke(); fill(COLORS.black); textAlign(CENTER, CENTER);
     text(pillText, 24 + pillW / 2, pillY + pillH / 2 + 1);
     const textX = 250, textW = w - textX - 24;
-    textAlign(LEFT, TOP); textStyle(BOLD); textSize(22);
-    text(item.title || "", textX, rowY + 14, textW, row.titleLines * 26);
-    textStyle(NORMAL); textSize(15);
-    text(item.body || "", textX, rowY + 17 + row.titleLines * 26, textW, row.bodyLines * 19 + 4);
+    textAlign(LEFT, TOP); textStyle(BOLD); textSize(state.recapTitleSize || 22);
+    text(item.title || "", textX, rowY + 14, textW, row.titleLines * row.titleLeading);
+    textStyle(NORMAL); textSize(state.recapBodySize || 15);
+    text(item.body || "", textX, rowY + 18 + row.titleLines * row.titleLeading, textW, row.bodyLines * row.bodyLeading + 4);
     rowY += row.h;
   });
   pop();
@@ -1257,6 +1261,8 @@ try {
     if (typeof d.footer === "string") state.footer = d.footer;
     if (typeof d.agendaTitle === "string") state.agendaTitle = d.agendaTitle;
     if (typeof d.agendaSubtitle === "string") state.agendaSubtitle = d.agendaSubtitle;
+    if (Number.isFinite(d.recapTitleSize)) state.recapTitleSize = constrain(d.recapTitleSize, 18, 36);
+    if (Number.isFinite(d.recapBodySize)) state.recapBodySize = constrain(d.recapBodySize, 12, 26);
     if (d.scales) state.scales = { ...state.scales, ...d.scales };
     if (Array.isArray(d.popups)) state.popups = d.popups.map((p) => ({ ...p }));
     if (Array.isArray(d.popupPositions))
@@ -1620,6 +1626,8 @@ function makePackage() {
       footer: state.footer,
       agendaTitle: state.agendaTitle,
       agendaSubtitle: state.agendaSubtitle,
+      recapTitleSize: state.recapTitleSize,
+      recapBodySize: state.recapBodySize,
       scales: { ...state.scales },
       popups: state.popups.map((p) => ({ ...p })),
       popupPositions: state.popupPositions.map((p) => ({ ...p })),
@@ -2409,6 +2417,15 @@ function buildEditor() {
   const popSec = makeSection(panel, "Programma mensile");
   makeTextField(popSec, "Titolo popup", state.agendaTitle, (v) => (state.agendaTitle = v));
   makeTextareaField(popSec, "Sottotitolo", state.agendaSubtitle, (v) => (state.agendaSubtitle = v));
+  function recapFontSlider(label, key, min, max) {
+    const field = createDiv(); field.class("field"); field.parent(popSec);
+    createElement("label", label).parent(field);
+    const control = createSlider(min, max, state[key], 1); control.parent(field);
+    const value = createSpan(` ${state[key]} px`); value.parent(field);
+    control.input(() => { state[key] = Number(control.value()); value.html(` ${state[key]} px`); });
+  }
+  recapFontSlider("DIMENSIONE TITOLI EVENTI", "recapTitleSize", 18, 36);
+  recapFontSlider("DIMENSIONE TESTI DESCRIZIONE", "recapBodySize", 12, 26);
   const agendaMeta = createDiv(
     `popup x ${round(state.popupPositions[0].x)} · y ${round(state.popupPositions[0].y)}`,
   );
