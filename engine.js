@@ -808,7 +808,7 @@ const LOGO_ICON_STORAGE_KEY = "ex-casa-logo-icons-v2";
 
 const FINAL_CAPTION_STORAGE_KEY = "ex-casa-final-caption-v1";
 
-state.logoIcons = ["🍒", "🍋", "🍇"];
+state.logoIcons = ["🌟", "🌟", "🌟"];
 
 state.arciLogo = null;
 state.showArciMark = true;
@@ -828,7 +828,7 @@ try {
     localStorage.getItem(LOGO_ICON_STORAGE_KEY) || "null",
   );
   if (Array.isArray(saved))
-    state.logoIcons = saved.slice(0, 3).map((v, i) => v || state.logoIcons[i]);
+    state.logoIcons = saved.slice(0, 3).map((v, i) => v ?? state.logoIcons[i]);
 } catch (e) {
   console.warn("logo icons storage", e);
 }
@@ -1062,6 +1062,7 @@ const LOGO_XS = [660, 820, 980],
   LOGO_Y = 1275;
 
 function drawHeartBurst(i, q) {
+  if (!state.showBrandBlock || !String(state.logoIcons[i] ?? "").trim()) return;
   const x = LOGO_XS[i],
     y = LOGO_Y;
   drawPinkWaves(x, y, constrain(q, 0, 1), 92, 3.5);
@@ -1897,14 +1898,7 @@ const PROJECT_EMOJI_LIBRARY = [
   "💡",
 ];
 
-state.logoIcons = ["🌟", "🌟", "🌟"];
 
-try {
-  localStorage.setItem(
-    "ex-casa-logo-icons-v2",
-    JSON.stringify(state.logoIcons),
-  );
-} catch (e) {}
 
 function installProjectEmojiLibrary() {
   const panel = document.getElementById("editor-panel");
@@ -2068,14 +2062,14 @@ function installLogoStyleControls() {
 
 function drawLogoSlot(i, logoAmount, iconScale) {
   if (!state.showBrandBlock) return;
-  if (!state.logos[i]) return;
+  if (!String(state.logoIcons[i] ?? "").trim()) return;
   const d = 128,
     x = LOGO_XS[i],
     y = LOGO_Y,
-    icon = state.logoIcons[i] || ["🍒", "🍋", "🍇"][i];
+    icon = state.logoIcons[i] ?? "🌟";
   push();
   translate(x, y);
-  if (logoAmount < 0.98) {
+  if (logoAmount < 0.98 || !state.logos[i]) {
     push();
     scale(iconScale);
     noStroke();
@@ -2084,7 +2078,7 @@ function drawLogoSlot(i, logoAmount, iconScale) {
     text(icon, 0, 0);
     pop();
   }
-  if (logoAmount > 0) {
+  if (logoAmount > 0 && state.logos[i]) {
     push();
     scale(logoAmount);
     if (state.logoBackground === "white") {
@@ -2145,10 +2139,10 @@ function installLogoUploadControls() {
     label.textContent = `ICONA ${i + 1}`;
     const input = document.createElement("input");
     input.type = "text";
-    input.value = state.logoIcons[i] || ["🍒", "🍋", "🍇"][i];
+    input.value = state.logoIcons[i] ?? "🌟";
     input.maxLength = 8;
     input.addEventListener("input", () => {
-      state.logoIcons[i] = input.value || ["🍒", "🍋", "🍇"][i];
+      state.logoIcons[i] = input.value;
       saveLogoIcons();
     });
     wrap.append(label, input);
